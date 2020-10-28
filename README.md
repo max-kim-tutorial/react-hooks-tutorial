@@ -1,46 +1,38 @@
-# Getting Started with Create React App
+# 훅신훅왕(Hook God Hook King)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React Hooks 레퍼런스 정리
 
-## Available Scripts
+## 훅
 
-In the project directory, you can run:
+### [리액트 팀이 훅을 개발한 이유](https://ko.reactjs.org/docs/hooks-intro.html#motivation)
 
-### `yarn start`
+#### 컴포넌트 사이에서 상태와 관련된 로직을 재사용하기 어렵다
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- 상태 관련해서 쓰기 좀 더 좋은 기초요소 제공
+- 훅은 계층의 변화 없이 상태 관련 로직을 재사용할 수 있도록 도와줌
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+#### 복잡한 컴포넌트는 이해하기 어려움
 
-### `yarn test`
+- 생명주기 로직이 불편함. 한 함수에 연관없는, 그것도 부수효과를 일으키는 코드들이 단일 메서드로 결합하기 때문에 버그가 쉽게 발생하고 무결성을 해침 => `useEffect 패러다임`
+- 상태 관련 로직이 결국 모든 공간에 있는 불편한 꼴이기 때문에 이런 컴포넌트들은 나누기도 불편하고, 테스트하기도 어려워짐.
+- 상태 관리 라이브러리를 쓰면 되지만 종종 너무 많은 추상화 단계를 거치고, 다른 파일 사이에서 건너뛰기를 요구하며 컴넌 재사용을 더 어렵게 만듬
+- 그러니깐 생명주기 기반으로 로직을 시계열로 쪼개는데 초점을 맞추기 보다는, 훅을 통해 로직에 기반을 둔 작은 함수로 컴넌을 나눌 수 있음
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+#### 클래스는 혼란스럽다
 
-### `yarn build`
+- 코드의 재사용성과 코드 구성을 좀 더 어렵게 만들고, 리액트를 배우는데 큰 진입장벽이 된다.(this의 동작방식이라던지, 이벤트 핸들러의 변태적인 this 잃음이라던지)
+- 클래스는 나눠지기가 쉽지 않고, 핫 리로딩을 깨지기 쉽고 신뢰할 수 없게 만든다. 
+- 개념적으로 리액트 컴넌은 항상 함수에 더 가깝다. 사실 컴포넌트 기반 개발은 언제나 함수형 프로그래밍이랑 친하다.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+#### 점진적 적용
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- 그렇다고 해서 클래스 기반 컴넌을 없애려는게 아니다.
+- 훅은 존재하는 코드와 함께 나란히 작동함으로써 점진적인 리팩토링의 여지를 남긴다. 
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 훅들
 
-### `yarn eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. 잘 모르는 훅들 정리 + 훅들 서머리 + 튜토리얼
+2. 그동안 봤었던 리액트 관련 레퍼런스 정리
+3. 커스텀 훅 만들어보기
