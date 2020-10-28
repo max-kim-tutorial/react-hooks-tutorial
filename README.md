@@ -1,10 +1,22 @@
 # 훅신훅왕(Hook God Hook King)
 
-React Hooks 레퍼런스 정리
+그동안 줍줍해왔던 React Hooks 레퍼런스 정리
 
-## 훅
+## 1. 훅
 
-### [리액트 팀이 훅을 개발한 이유](https://ko.reactjs.org/docs/hooks-intro.html#motivation)
+### [1-1 당최 훅을 왜 hook이라 부르는 것인가?](https://stackoverflow.com/questions/467557/what-is-meant-by-the-term-hook-in-programming)
+
+- **컴포넌트와 같은 일반적인 구현체에 기능을 연동(hook into) 해주는 함수 혹은 로직.** 굳이 번역하자면 **연동함수?** 쯤 될듯
+- A hook is a place and usually an interface provided in packaged code that allows a programmer to **insert customized programming.** 개발자가 커스텀한 로직을 주입할 수 있게 하는 수단.
+- A hook is **functionality provided** by software for users of that software to have their own **code called under certain circumstances.** That code can augment or replace the current code. 적당하게 호출.
+- 약간 [종단 관심사](https://github.com/MaxKim-J/Code-Review-References/blob/master/01_designPrinciples/03_aspectOrientedProgramming.md) 같은걸 실현하기 위해 제공하는 인터페이스.
+- [프록시](https://github.com/MaxKim-J/Code-Review-References/blob/master/02_desingPatterns/10_proxyPattern.md) 패턴의 느낌 + [IOC](https://github.com/MaxKim-J/Code-Review-References/blob/master/01_designPrinciples/04_InversionOfControl.md)의 향기.. => 개발자는 코드를 제공하고 프레임워크는 적절하게 적절한 때에 호출한다.
+- [콜백이랑 비슷한 개념처럼 보일텐데 살짝 다르다.](https://stackoverflow.com/questions/11087543/what-is-the-difference-between-hook-and-callback) 약간 콜백이 훅의 한 종류. 대충 정리하자면.
+  - 훅은 주로 라이브러리에 개발자의 코드의 호출 주도권을 넘긴다
+  - 콜백은 **연동한다**는 넓은 의미를 가진 어휘인 훅의 한 종류라고 볼 수 있는데, 콜백의 호출 주도권은 커널이나 GUI Subsystem에게로 넘겨진다.  
+- 여담인데 함수형 컴포넌트에서도 상태관리를 해줄 수 있는게 훅이다 이런 설명 이상함. 훅이 왜 hook이라 이름붙었는지 설명이 안됨
+
+### [1-2 리액트 팀이 훅을 개발한 이유](https://ko.reactjs.org/docs/hooks-intro.html#motivation)
 
 #### 컴포넌트 사이에서 상태와 관련된 로직을 재사용하기 어렵다
 
@@ -31,8 +43,5 @@ React Hooks 레퍼런스 정리
 
 ## 훅들
 
+### useState
 
-
-1. 잘 모르는 훅들 정리 + 훅들 서머리 + 튜토리얼
-2. 그동안 봤었던 리액트 관련 레퍼런스 정리
-3. 커스텀 훅 만들어보기
