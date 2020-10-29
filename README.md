@@ -45,7 +45,7 @@
 
 #### 1-2-4) 점진적 적용
 
-- 그렇다고 해서 클래스 기반 컴넌을 없애려는게 아니다.
+- 그렇다고 해서 클래스 기반 컴넌을 없애려는게 아니다. 갑자기 후루룩 다 배울 필요도 없다.
 - 훅은 존재하는 코드와 함께 나란히 작동함으로써 점진적인 리팩토링의 여지를 남긴다. 
 
 ## 2. 훅의 규칙
@@ -74,13 +74,140 @@
 
 ## 3. 훅들
 
-### 3-1) useState
+### [3-1) useState]()
 
 함수형 컴포넌트에 렌더링을 불러일으키는 상태값을 연동
 
-#### 3-1-1) 어떻게 이 간단한 함수가 컴포넌트의 state를 기록하고 변화를 추적하나?
+- 상태 유지 값과 그 값을 갱신하는 함수를 반환한다.
+- 최초로 렌더링을 하는 동안 반환된 state는 첫번째 전달된 인자의 값과 같다.
+- setState 함수는 state를 갱신할때 사용. 새 state값을 받아 컴포넌트 리렌더링을 큐에 등록하게 된다. => 즉 setState를 만나면 컴포넌트가 재랜더링된다.
+- 다음 리랜더링시에 useState를 통해 반환받은 첫번째 값은 항상 갱신된 최신 state
+- 초기 state값이 고비용 계산의 결과라면, 초기 렌더링 시에만 실행될 함수를 제공할 수 있다.
 
-#### 3-1-2) 비동기로 동작한다는데?? 
+```jsx
+const [state, setState] = useState(() => {
+  const initialState = someExpensiveComputation(props);
+  return initialState;
+});
+```
+
+- state hook을 현재의 state와 동일한 값으로 갱신하는 경우 React는 자식을 렌더링한다거나 무엇을 실행하는 것을 회피하고 처리를 종료함 => 실행의 회피
+- 근데 막 state를 초기화하는 식으로 렌더링을 하지 않는 것 보다는 컴포넌트 최적화를 도모하는게 더 맞는듯.
+
+#### [3-1-1) 어떻게 이 간단한 함수가 컴포넌트의 state를 기록하고 변화를 추적하나?](https://hewonjeong.github.io/deep-dive-how-do-react-hooks-really-work-ko/)
+
+**클로저쨩  두둥등장**
+
+- 클로저를 언급하는 순간 + 그리고 3-1-1 제목을 다시 보는 순간 `아!` 한다면 당신은 공부를 좀 하셨군요
+- 훅을 사용하면 bind된 컨텍스트 같은 this의 습격을 걱정할 필요가 없게 되지만, 클로저에 대해서 걱정해야 한다. 
+- useState를 구성하는 원리의 가장 큰 부분이 바로 이 클로저. 함수에서 변수 은닉을 할 수 있도록 해준다. + [모듈패턴](https://github.com/MaxKim-J/Code-Review-References/blob/master/02_desingPatterns/01_modulePattern.md)
+
+```jsx
+// 완전 정확한건 아닌데 그냥 이런 흐름이다 이런 것
+
+function useState(initialValue) {
+  // 클로저 변수 => 이 함수의 실행 컨텍스트가 없어져도 => 즉 렉시컬 스코프 밖에서도
+  // 리턴하는 함수가 이 값을 참조한다면 GC가 안됨
+  var _val = initialValue 
+
+  function state() {
+    // 클로저 변수를 참조하는 게터함수
+    return _val
+  }
+
+  function setState(newVal) {
+    // 클로저 변수를 수정하는 세터함수
+    _val = newVal 
+  }
+
+  return [state, setState] // 외부에서 사용하기 위해 함수들을 노출
+}
+var [foo, setFoo] = useState(0) // 배열 구조분해 사용
+console.log(foo()) // 0 출력 - 위에서 넘긴 initialValue
+setFoo(1) // useState의 스코프 내부에 있는 _val를 변경합니다.
+console.log(foo()) // 1 출력 - 동일한 호출하지만 새로운 initialValue
+```
+
+- 리액트와 다른 프레임워크의 맥락에서 보면 이거슨 'state'라고 할 수 있는 것이다. 클래스형 컴포넌트때와 마찬가지로 은닉화되고 보호받고 있다.
+- 실제 리액트 컴넌에서 사용하려면 state가 함수가 아니라 변수여야 한다. 근데 여기서 `_val`을 그대로 노출하면 위험한 것이므로 앞서 구현했던 useState에 클로저를 겹으로 달아주거나 + 매 렌더링마다 초기화를 시켜야 하므로 값을 쓰는게 아니라 [호출해주는 식으로 바꾼다면 호출 할때마다 값을 가져온다.](https://rinae.dev/posts/getting-closure-on-react-hooks-summary) 
+
+```js
+// 1
+useState(initialValue) {
+  _val = _val || initialValue
+  function setState(newVal) {
+    _val = newVal
+  }
+  return [_val, setState]
+}
+
+// 2
+function useState(initVal) {
+  let _val = initVal
+  const state = () => _val
+  const setState = newVal => {
+    _val = newVal
+  }
+  return [state, setState]
+}
+```
+
+- 아니 그렇다면,,, 메모리에 할당된 클로저 변수는 단 하나인데 useState를 여러번 호출하면,,, state를 관리할 수 있나여??
+- 여러개의 훅이 호출될때 컴포넌트가 어떻게 동작하고 있는지 알아보자. 앞에서 구현한 useState를 두 번 이상 호출한다면, useState라는 하나의 함수에 할당된 클로저 변수는 동일하기 때문에 state는 덮어씌워진다.
+
+```js
+function Component() {
+  const [count, setCount] = React.useState(1)
+  const [text, setText] = React.useState('apple')
+  return {
+    render: () => console.log({ count, text }),
+    click: () => setCount(count + 1),
+    type: word => setText(word),
+  }
+}
+var App = React.render(Component) // {count: 1, text: 'apple'}
+App.click()
+var App = React.render(Component) // {count: 2, text: 2}
+App.type('banana')
+var App = React.render(Component) // {count: 'banana', text: 'banana'}
+```
+
+- useState의 반환값을 다른 값으로써 관리하고 싶다면 각 값 별로 배열에 담아 다루면 된다. 훅을 담아 둔 배열과 현재 어떤 훅이 어떤 인덱스를 바라보고 있는지 관리해주는 요령이 필요하다. 그리고 그걸 리액트가 한다!
+
+```js
+const React = (function() {
+  let hooks = []
+  let idx = 0
+  function useState(initVal) {
+    const state = hooks[idx] || initVal
+    const _idx = idx // 이 훅이 사용해야 하는 인덱스를 가둬둔다.
+    const setState = newVal => {
+      hooks[_idx] = newVal
+    }
+    idx++ // 다음 훅은 다른 인덱스를 사용하도록 한다.
+    return [state, setState]
+  }
+  function render(Component) {
+    idx = 0 // 랜더링 시 훅의 인덱스를 초기화한다.
+    const C = Component()
+    C.render()
+    return C
+  }
+  return { useState, render }
+})()
+```
+
+- 여기서 훅의 규칙을 이해할 수 있다. 조건부로 훅이 호출되거나 루프 안에서 훅이 호출되어야 하는 경우 등이 있다면 이 인덱스의 순서를 보장할 수 없다! 불순해지는 것이다. 
+- 여러개의 훅은 이렇게 배열과 같은 큐에 넣어져서 인덱스로 관리되고 리액트 렌더링 결과물은 이 훅 배열에 의존한다.
+
+#### [3-1-2) 비동기로 동작한다는데??](https://darrengwon.tistory.com/651)
+
+- setState를 호출한 직후에 바로 업데이트된 state를 확인할 수 없다. 곧바로 변경 내역이 반영되지 않는다. 
+- **state가 바뀌면 재랜더링되고 => 재랜더링되면 바뀐 state가 반영된다**
+- 변화를 보고 싶다면 useEffect를 사용하는게 맞다. [useEffect는 업데이트 직후의 최신 state값에 접근할 수 있도록 해준다.](https://stackoverflow.com/questions/54119678/is-usestate-synchronous)
+- setState는 프로미스를 반환하는 함수는 아니기때문에 async await같은걸로 제어가 되는건 아니다. 정확히는 비동기로 작동하는건 아닌데, 비동기로 작동하는 것처럼 보인다.
+- 더 덧붙이자면 앞에서 계속 보았듯 클로저를 기반으로 함수가 상태 값을 사용하는데, 상태 업데이트는 기존 클로저가 아니라 새로운 클로저가 생성되는 다음 다시 렌더링에 반영된다. **즉 재랜더링이 되지 않는다면 클로저는 그대로고 결국 state도 그대로다**
+
 
 ### 3-2) useEffect
 
