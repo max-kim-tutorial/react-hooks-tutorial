@@ -21,7 +21,8 @@
 - [콜백이랑 비슷한 개념처럼 보일텐데 살짝 다르다.](https://stackoverflow.com/questions/11087543/what-is-the-difference-between-hook-and-callback) 약간 콜백이 훅의 한 종류. 대충 정리하자면.
   - 훅은 주로 라이브러리에 개발자의 코드의 호출 주도권을 넘긴다
   - 콜백은 **연동한다**는 넓은 의미를 가진 어휘인 훅의 한 종류라고 볼 수 있는데, 콜백의 호출 주도권은 커널이나 GUI Subsystem에게로 넘겨진다.  
-- 여담인데 함수형 컴포넌트에서도 상태관리를 해줄 수 있는게 훅이다 이런 설명 이상함. 훅이 왜 hook이라 이름붙었는지 설명이 안됨
+
+> 여담인데 **함수형 컴포넌트에서도 상태관리를 해줄 수 있는게 훅이다** 이런 설명은 맞는 말이긴 한데 많은게 생략된 설명이라고 생각합니다. 훅이 왜 애당초 hook이라 이름붙었는지부터 설명하는게 맞는거 가타요
 
 ### [1-2) 리액트 팀이 훅을 개발한 이유](https://ko.reactjs.org/docs/hooks-intro.html#motivation)
 
@@ -152,7 +153,7 @@ function useState(initVal) {
 }
 ```
 
-- 아니 그렇다면,,, 메모리에 할당된 클로저 변수는 단 하나인데 useState를 여러번 호출하면,,, state를 관리할 수 있나여??
+- 아니 그렇다면,,, 메모리에 할당된 클로저 변수는 단 하나인데 useState를 여러번 호출하면,,, state를 관리할 수 있나여?? 이거 [싱글톤](https://github.com/MaxKim-J/Code-Review-References/blob/master/02_desingPatterns/03_singletonPattern.md) 아니에여??
 - 여러개의 훅이 호출될때 컴포넌트가 어떻게 동작하고 있는지 알아보자. 앞에서 구현한 useState를 두 번 이상 호출한다면, useState라는 하나의 함수에 할당된 클로저 변수는 동일하기 때문에 state는 덮어씌워진다.
 
 ```js
@@ -173,6 +174,7 @@ var App = React.render(Component) // {count: 'banana', text: 'banana'}
 ```
 
 - useState의 반환값을 다른 값으로써 관리하고 싶다면 각 값 별로 배열에 담아 다루면 된다. 훅을 담아 둔 배열과 현재 어떤 훅이 어떤 인덱스를 바라보고 있는지 관리해주는 요령이 필요하다. 그리고 그걸 리액트가 한다!
+- [훅배열로 여러 훅을 관리하게 되고, 컴포넌트가 렌더링될때 훅 배열 안에서 해당 훅을 참조할 수 있는 인덱스가 초기화된다](https://medium.com/@ryardley/react-hooks-not-magic-just-arrays-cd4f1857236e)
 
 ```js
 const React = (function() {
@@ -198,14 +200,14 @@ const React = (function() {
 ```
 
 - 여기서 훅의 규칙을 이해할 수 있다. 조건부로 훅이 호출되거나 루프 안에서 훅이 호출되어야 하는 경우 등이 있다면 이 인덱스의 순서를 보장할 수 없다! 불순해지는 것이다. 
-- 여러개의 훅은 이렇게 배열과 같은 큐에 넣어져서 인덱스로 관리되고 리액트 렌더링 결과물은 이 훅 배열에 의존한다.
+- 여러개의 훅은 이렇게 배열과 같은 큐에 넣어져서 인덱스로 관리되고 리액트 렌더링 결과물은 이 훅 배열에 의존한다. useEffect의 의존성 배열처럼 리액트 전체는 훅배열에 의존하여 뷰를 렌더링하게 된다고 볼 수 있지 않을까?
 
 #### [3-1-2) 비동기로 동작한다는데??](https://darrengwon.tistory.com/651)
 
 - setState를 호출한 직후에 바로 업데이트된 state를 확인할 수 없다. 곧바로 변경 내역이 반영되지 않는다. 
 - **state가 바뀌면 재랜더링되고 => 재랜더링되면 바뀐 state가 반영된다**
-- 변화를 보고 싶다면 useEffect를 사용하는게 맞다. [useEffect는 업데이트 직후의 최신 state값에 접근할 수 있도록 해준다.](https://stackoverflow.com/questions/54119678/is-usestate-synchronous)
-- setState는 프로미스를 반환하는 함수는 아니기때문에 async await같은걸로 제어가 되는건 아니다. 정확히는 비동기로 작동하는건 아닌데, 비동기로 작동하는 것처럼 보인다.
+- 변화를 보고 싶다면 useEffect를 사용하는게 맞다. [useEffect는 업데이트 직후의 최신 state값에 접근할 수 있도록 해준다.](https://stackoverflow.com/questions/54119678/is-usestate-synchronous) => 근데 사실 이것도 state가 바뀌었을 때, 즉 렌더링이 다시 되었을때 접근하는 것이라서 딱히 특별한 동작을 수반하는 것은 아니다.
+- setState는 프로미스를 반환하는 함수는 아니기 때문에 async await같은걸로 제어가 되는건 아니다. 정확히는 비동기로 작동하는건 아닌데, 비동기로 작동하는 것처럼 보이는 것이다.
 - 더 덧붙이자면 앞에서 계속 보았듯 클로저를 기반으로 함수가 상태 값을 사용하는데, 상태 업데이트는 기존 클로저가 아니라 새로운 클로저가 생성되는 다음 다시 렌더링에 반영된다. **즉 재랜더링이 되지 않는다면 클로저는 그대로고 결국 state도 그대로다**
 
 
@@ -213,11 +215,61 @@ const React = (function() {
 
 부수효과와 관련된 로직을 **죄다** 해결하는 부수효과 마스터
 
-#### 3-2-1) 생명주기와는 완전 다른 useEffect 패러다임
+- [부수효과는 리소스의 정리가 필요한 것과 그렇지 않은 것들로 나눌 수 있다.](https://ko.reactjs.org/docs/hooks-effect.html) => return값에서 함수를 반환하는 것으로 처리 가능. 마운트가 해제되는 때에 정리를 실행
+- 정리가 필요하지 않은 부수효과는 실행 이후 신경을 쓸게 없다.
+- useEffect는 리액트에게 컴포넌트가 **렌더링 이후**에 어떤 일을 수행해야 하는지를 말한다. 리액트는 콜백으로 넘긴 함수를 기억했다가 DOM 업데이트를 수행한 이후에 불러낸다. 
+- useEffect는 컴포넌트 내부에서 호출됨으로써 effect를 통해 state에 접근할 수 있게 된다. 함수 범위 안에 존재하기 때문에 특별한 API없이도 값을 얻을 수 있다. 
+- useEffect는 렌더링 이후에 그냥 매번 수행된다(일관성있음) 생명주기처럼 update니 mount니 특정 상황에서 제각각 수행되지 않음. 리액트는 effect가 수행되는 시점에 이미 DOM이 업데이트되었음을 보장함
+- **useEffect에 전달된 함수가 모든 렌더링에서 다르다.** state의 업데이트 여부와는 다르게 effect 내부에서 그 값을 읽을 수 있게 하기 위해서,,, 리렌더링하는 때마다 모두 이전과 다른 effect로 교체하여 전달. 이 점이 렌더링의 결과의 한 부분이 되게 만드는 지점인데, 각각의 effect는 특정한 렌더링에 속하게 된다.
 
-#### 3-2-2) 의존성 배열과 관련한 썰
+#### [3-2-1) useEffect의 작동 원리](https://rinae.dev/posts/getting-closure-on-react-hooks-summary)
 
-#### 3-2-3) 리액트 팀이 원했던 생명주기의 대체
+```jsx
+// 인자로 콜백이랑 의존성 배열 받음
+function useEffect(cb, depArray) {
+  const oldDeps = hooks[idx] // 이미 저장되어있던 의존 값 배열이 있는지 본다.
+  let hasChanged = true
+  if (oldDeps) {
+    // 의존 값 배열의 값 중에서 차이가 발생했는지 확인한다.
+    // 실제로 리액트 구현체도 `Object.is` 로 값을 비교한다. 정확한 동작은 MDN 참고.
+    hasChanged = depArray.some((dep, i) => !Object.is(dep, oldDeps[i]))
+  }
+  // 값이 바뀌었으니 콜백을 실행한다.
+  if (hasChanged) {
+    cb()
+  }
+  // useEffect도 훅의 일부분이다. hooks 배열에 넣어서 관리해준다.
+  hooks[idx] = depArray
+  idx++
+}
+
+function Component() {
+  const [count, setCount] = React.useState(1)
+  const [text, setText] = React.useState('apple')
+  // 랜더링 시 최초에 한 번만 실행된다.
+  // 배열 안에 관찰하고자 하는 상태를 전달하면 그 상태에 반응하여 콜백이 실행된다.
+  React.useEffect(() => {
+    console.log('side effect')
+  }, [])
+  // ...
+}
+```
+
+#### 3-2-2) [생명주기와는 완전 다른 useEffect 패러다임](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%ED%95%A8%EC%88%98%EB%A5%BC-%EC%9D%B4%ED%8E%99%ED%8A%B8-%EC%95%88%EC%9C%BC%EB%A1%9C-%EC%98%AE%EA%B8%B0%EA%B8%B0)
+
+**생명주기 사고방식으로 useEffect를 이해하려고 하지 마라**  
+> 제목에 링크단 글은 진짜 리액트 프로그래밍을 하는 사람이라면 진짜 n번쯤 읽고 [글쓴이 - Dan Abramov](https://overreacted.io/a-complete-guide-to-useeffect/)에게 [그랜절](https://namu.wiki/w/%EA%B7%B8%EB%9E%9C%EC%A0%88) 올려야할 글입니다,,,  
+
+- 모든 렌더링은 고유의 상태값과 이팩트를 가진다.
+- 이팩트는 매 랜더링 후 실행되며, 개념적으로 컴포넌트 결과물의 일부로서 특정 랜더링 시점의 prop과 state를 '본다' => 매 랜더링마다 특정 렌더링 시점의 상태값을 반영한다
+- 함수형 컴포넌트의 state
+
+
+#### 3-2-3) 의존성 배열과 관련한 썰
+
+리액트에게 거짓말을 하지 마라 ㅎㅅㅎ
+
+#### 3-2-4) effect를 잘 사용하는 팁
 
 ### 3-3) useRef
 
