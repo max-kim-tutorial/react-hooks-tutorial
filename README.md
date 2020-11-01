@@ -49,7 +49,7 @@
 - 그렇다고 해서 클래스 기반 컴넌을 없애려는게 아니다. 갑자기 후루룩 다 배울 필요도 없다.
 - 훅은 존재하는 코드와 함께 나란히 작동함으로써 점진적인 리팩토링의 여지를 남긴다. 
 
-## 2. 훅의 규칙
+## 2. 훅 규칙
 
 ### 2-1) [리액트 공식문서 훅 규칙](https://ko.reactjs.org/docs/hooks-faq.html)
 
@@ -312,7 +312,7 @@ function Counter() {
 리액트에게 거짓말을 하지 마라 ㅎㅅㅎ 혼나용!!!
 
 - 이펙트를 적용할 필요가 없다면 다시 실행하지 않는 것이 좋을 것이다. => 특정한 이펙트가 불필요하게 다시 실행되는 것을 방지하고 싶다면 의존성 배열을 useEffect의 인자로 전달할 수 있는 거시다
-- 의존성 배열은 리액트에게 어떤 랜더링 스코프에서 나온 값 중 이펙트에 쓰이는 것 **전부**를 알려주는 힌트라고 인식해야한다. 기본적으로 이펙트는 컴포넌트의 state나 props를 알 수가 없기 때문이다.
+- 의존성 배열은 리액트에게 어떤 랜더링 스코프에서 나온 값 중 이펙트에 쓰이는 것 **전부**를 알려주는 힌트라고 인식해야한다.(이펙트가 지금 어떤 값에 의존하고 있는지를 표현) 기본적으로 이펙트는 컴포넌트의 state나 props를 알 수가 없기 때문이다.
 - 의존성 배열의 요소들이 같다면 동기화할 것은 없으니 리액트는 이펙트를 스킵한다.
 - 의존성에 대해 리액트에게 거짓말을 한다면 좋지 않은 결과를 가져오게 된다. 그런 상황이 대표적으로는 빈 배열을 의존성 배열로 넘기는건데(초기에만 이팩트를 실행하고 싶어서) => 진짜 의존성이 없는 경우 아니면 안 하는게 좋은거같다
 - 이펙트를 한 번만 실행하고 싶어서 의존성 배열로 빈 배열을 넘겼는데 useEffect 내부의 setState 함수가 있다면 그것도 최초에만 실행될 것 => 버그가 터지기 쉬운 로직이 된다.
@@ -341,6 +341,34 @@ useEffect(() => {
 - 만약에 useEffect안에서 setInterval처럼 클린업이 필요한 부수효과를 사용하고, state에 의존성이 있는 경우 이펙트는 매 렌더링때마다 count를 참조해 기존 interval을 해제하고 새로운 interval을 등록할 것인데, 이런 동작은 크게 필요 없다.
 - 따라서 setState함수에 함수를 인자로 전달하여, 기존 count를 참조하여 값을 업데이트하게 만든다면, 의존성 배열의 count를 제거할 수 있다.
 - 수정된 이펙트가 최초 단 한번만 실행되었다 하더라도, 첫번째 렌더링에 포함되는 인터벌 콜백은 인터벌이 실행될때마다 setCount를 호출해 state를 업데이트 할 것이므로 정확하게 동작한다. 리액트가 state를 이미 알고 있기 때문에 컴포넌트 내부에서 현재의 count를 알 필요가 없는 것이다.
+
+##### * 클린업이 없는 경우(알쏭달쏭)
+
+앞에서 이야기했던 예제에서 setInterval을 빼보도록 하게따(클린업이 없는 경우)
+
+```jsx
+useEffect(() => {
+  setCount(10 + count)
+}, [idx])
+```
+
+예컨데 이 코드는 Vue의 watch처럼 동작한다. idx라는 state가 바뀔때마다 count가 바뀐다. 근데 이거는 의존성 배열에 뻥을 치고있는 것이기 때문에, eslint에서는 의존성 배열에 count를 넣으라는 경고가 뜬다. 근데 막상 count를 넣으면 count의 값이 무한 널뛰기를 할 것이다. count의 값이 다르면 count의 값을 바꾸니까 계속 effect를 실행할 것이다. 
+
+```jsx
+useEffect(() => {
+  setCount(c => c+10)
+}, [idx])
+```
+
+이럴때 state 콜백을 이용하면 count값을 직접 참조하지 않기 때문에 무한 널뛰기 현상이 없어지고 예상했던 것처럼 동작한다.
+
+처음에 훅을 배우고 써볼때 나는 **"의존성 배열의 요소에 해당하는 값이 바뀔 때마다 이펙트 실행한다"** 이런 느낌으로 이해하고 있었다. 뭐 동작을 생각해보면 백프로 틀린말은 아닌데, 사실 생명주기 사고방식에서 자유롭지 못한 것이다.  
+
+그런데 그게 다가 아니다. 정확히 해야될게 의존성 배열은 단순히 **어떤 state나 props의 변화를 관찰하라**가 아니라 **콜백으로 전달하는 이 부수효과는 배열 안의 요소에 의존을 한다**는 것을 **알려주는** 역할을 한다. 이 두 가지는 큰 차이를 야기하는데, useEffect는 당연히 콜백이 배열 안의 요소들에 **어떤 방식으로 의존을 하는지**까지는 모른다. 그래서 idx가 바뀌었으니 그저 콜백을 실행한다. 
+
+의존성 배열에게 의존성을 알려주는 의무를 부여함과 동시에 콜백을 trigger하는 값의 목록을 제공하라는 요구사항은 상충될 여지가 있는데 왜 이렇게 만든걸까 싶기도 하다. 의존성 배열에 있는 것을 두리뭉실하게 동기화의 타겟으로 보는 것인지? 괴랄한 버그를 유발할 수 있는 이상한 상태값 참조를 콜백에서 개발자가 알아서 지우라는 뜻인지? 근데 또 웃긴게 콜백에서 쓰지 않는 변수를 의존성 배열에 넣으면 오류가 안 난다. 이럴때는 또 watch처럼 쓸 수 있는 것인데
+
+깔끔한 이펙트를 만들기 위해서는 개발자가 의존성 배열을 지키면서, 위와 같은 괴랄한 문제가 없는 상태 업데이트를 할 수 있게끔 로직을 작성해줘야 한다. 개발자의 권한이 큰 것이다. 어쨌든 한가지 솔리드한 사실은 **useEffect 안에서 쓰이면 무조건 의존성 배열에 들어가야 한다.**
 
 #### [3-2-4 왜 useEffect는 이렇게 렌더링 이후 매번 실행되게끔 만들어진거임?](https://ko.reactjs.org/docs/hooks-effect.html#explanation-why-effects-run-on-each-update)
 
@@ -385,6 +413,8 @@ function FriendStatus(props) {
 - **관심사를 구분하려고 한다면 effect를 여러개 써라** : 훅이 탄생하게 된 동기가 된 문제 중 하나는 생명주기 class 메서드가 관련이 없는 로직들을 모아놓고, 관련 있는 로직들은 여러개의 메서드에 나누어놓는 정신없는 구조를 만들어내는 경우가 있다는 것. **여정이 아니라 결과와 의존성에 따라!**
 - **성능 최적화를 잘 해라** : 모든 렌더링 이후에 effect를 정리하거나 적용하는 것이 성능 저하를 발생시킬 수 있다. 의존성 배열과 return 값 클린업을 이용해서 effect가 필요한 때에만 호출될 수 있도록 유의하기.
 
+#### [3-2-6) effect안으로 함수를 옮기기](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%ED%95%A8%EC%88%98%EB%A5%BC-%EC%9D%B4%ED%8E%99%ED%8A%B8-%EC%95%88%EC%9C%BC%EB%A1%9C-%EC%98%AE%EA%B8%B0%EA%B8%B0)
+
 ### 3-3) useRef
 
 DOM에 접근하는 훅으로만 알고 있었는데 아니었다
@@ -396,6 +426,8 @@ DOM에 접근하는 훅으로만 알고 있었는데 아니었다
 
 ```jsx
 function TextInputWithFocusButton() {
+  // 아 그리고 객체이기 때문에 const로 변수 선언해도 상관없다
+  // 우리는 current에 접근할것이기 때무네
   const inputEl = useRef(null);
   const onButtonClick = () => {
     // `current` points to the mounted text input element
@@ -458,3 +490,85 @@ export default Counter;
 
 - 사실 생각해보면 3-3 단락에 설명이 다 있다.
 - 여담으로는 클래스 컴포넌트에서는 인스턴스 변수를 사용하면 렌더링에서 자유로운 변수를 사용할 수 있었다.
+
+### [3-4) useReducer](https://ko.reactjs.org/docs/hooks-reference.html#usereducer)
+
+더 쉬운 상태관리를 위한 훅 1  
+미니 리덕스를 컴포넌트 단에 달아주는 훅  
+
+```jsx
+const initialState = {count: 0};
+function reducer(state, action) {
+
+  switch (action.type) {
+    case 'increment':
+      return {count: state.count + 1};
+    case 'decrement':
+      return {count: state.count - 1};
+    default:
+      throw new Error();
+  }
+}
+
+function Counter() {
+  // 인자로 리듀서와 state 초기값
+  const [state, dispatch] = useReducer(reducer, initialState);
+  return (
+    <>
+      Count: {state.count}
+      <button onClick={() => dispatch({type: 'decrement'})}>-</button>
+      <button onClick={() => dispatch({type: 'increment'})}>+</button>
+    </>
+  );
+}
+```
+
+- useState를 대체하는 함수. `(state, action) => newState`의 형태로 reducer을 받고 dispatch 메서드와 짝의 형태로 state를 반환한다.
+- 다수의 하윗값을 포함하는 복잡한 정적 로직을 만드는 경우나 다음 state가 이전 state에 의존적인 경우에 더 선호된다. 참조가 더 쉽고 변화하는 로직을 한꺼번에 선언 가능하기 때문에.
+- 그리고 useReducer는 자세한 업데이트를 트리거하는 컴포넌트의 성능을 최적화할 수 있게 하는데, 콜백 대신에 dispatch를 전달하기 때문
+- 디스패치 함수의 동일성이 안정적이고 리렌더링 시에도 변경되지 않는 것을 보장하기 때문에 최적화에 용이함(의존성 배열들에 넘길 필요가 없음)
+- 음,,, 생각
+- 리듀서에서 현재 state와 동일한 값을 반환하는 경우 React는 자식을 리렌더링하거나 effect를 발생하지 않고 이것들을 회피한다.
+
+주도권을 어디에 가져오는가???
+
+#### [3-4-1) useReducer의 특히 멋진 점](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%EC%99%9C-usereducer%EA%B0%80-hooks%EC%9D%98-%EC%B9%98%ED%8A%B8-%EB%AA%A8%EB%93%9C%EC%9D%B8%EA%B0%80)
+
+```jsx
+function Counter({ step }) {
+  const [count, dispatch] = useReducer(reducer, 0);
+
+  function reducer(state, action) {
+    if (action.type === 'tick') {
+      return state + step;
+    } else {
+      throw new Error();
+    }
+  }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      dispatch({ type: 'tick' });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [/* dispatch */]);
+
+  return <h1>{count}</h1>;
+}
+```
+
+- 만약에 props가 useEffect의 의존성 배열에 필요하다고 할 때, 이걸 useEffect를 속이지 않으면서 의존성 배열에서 제외시킬 수 없을까?
+- 리듀서 그 자체를 컴포넌트 안에 정의하여 props를 읽도록 하면 피할 수 있다(리듀서 안에서 props에 접근이 가능하다.)
+- 업데이트 로직과 그로 인해 무엇이 일어나는지 서술하는 것이 분리될 수 있도록 만들어준다. 근데 뭐 이건 상태관리 앱의 장점이기도 하니깐
+- 의존성 배열 안에는 dispatch가 들어간다고 쓸 수도 있고, 뺄 수도 있다 dispatch는 렌더링간 계속 동일하기 때문이다. + 이팩트의 불필요한 의존성을 제거한다(정확히 말하면 리듀서에 위임하는 느낌)
+
+
+### 3-5) useContext
+
+더 쉬운 상태관리를 위한 훅 2
+
+### 3-6) useMemo
+
+### 3-7) useCallback
+
+### 3-8) 기타 내장 훅
