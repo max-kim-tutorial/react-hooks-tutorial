@@ -256,6 +256,8 @@ function Component() {
 
 #### 3-2-2) [생명주기와는 완전 다른 useEffect 패러다임](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%ED%95%A8%EC%88%98%EB%A5%BC-%EC%9D%B4%ED%8E%99%ED%8A%B8-%EC%95%88%EC%9C%BC%EB%A1%9C-%EC%98%AE%EA%B8%B0%EA%B8%B0)
 
+![이런 그림도 있었네](https://miro.medium.com/max/1400/1*Lvb5C_NdJCyt7YgA89nvNg.jpeg)
+
 **생명주기 사고방식으로 useEffect를 이해하려고 하지 마라**  
 
 > 제목에 링크단 글은 진짜 리액트 프로그래밍을 하는 사람이라면 진짜 n번쯤 읽고 [글쓴이 - Dan Abramov](https://overreacted.io/a-complete-guide-to-useeffect/)에게 [그랜절](https://namu.wiki/w/%EA%B7%B8%EB%9E%9C%EC%A0%88) 올려야할 글입니다,,,  
@@ -385,6 +387,74 @@ function FriendStatus(props) {
 
 ### 3-3) useRef
 
-DOM에 접근해보셈
+DOM에 접근하는 훅으로만 알고 있었는데 아니었다
 
-#### 3-3-1) DOM 접근 말고 다른 용도. 그리고 왜 그렇게 쓸 수 있는지
+- .current 프로퍼티로 전달된 인자(initiaValue)로 초기화된 변경 가능한 ref 객체를 반환한다. 반환한 객체는 컴포넌트에 계속 살아있다.
+- 일반적인 용도는 JSX로 만들어놓은 돔에 직접 접근하는 것이다.(명령적으로)
+- 본질적으로 useRef는 .current 프로퍼티에 변경 가능한 값을 갖고 있는 상자와 같다.
+- useRef는 **순수 자바스크립트 객체를 생성**한다! 매번 렌더링을 할때마다 동일한 ref객체를 제공한다.
+
+```jsx
+function TextInputWithFocusButton() {
+  const inputEl = useRef(null);
+  const onButtonClick = () => {
+    // `current` points to the mounted text input element
+    inputEl.current.focus();
+  };
+  return (
+    <>
+      <input ref={inputEl} type="text" />
+      <button onClick={onButtonClick}>Focus the input</button>
+    </>
+  );
+}
+```
+
+- 중요한건 **useRef는 내용이 변경될때 그것을 알려주지는 않는다는 것 + .current 프로퍼티를 변형하는 것이 리렌더링을 발생시키지 않는다는 것**
+
+#### [3-3-1) DOM 접근 말고 다른 용도. 그리고 왜 그렇게 쓸 수 있는지](https://react.vlpt.us/basic/12-variable-with-useRef.html)
+
+- DOM에 접근하는 것 말고도 다른 용도가 하나 있는데 컴포넌트 안에서 조회 및 수정할 수 있는 변수를 관리하는 것.
+- 앞에서 말했듯 useRef는 관리하는 변수는 값이 바뀐다고 해서 컴포넌트가 리렌더링 되지 않는다. 리액트 컴포넌트에서의 state는 state를 바꾸는 함수를 호출하고 나서 그 다음 렌더링 이후로 업데이트 된 상태를 조회할 수 있지만, useRef로 관리되는 변수는 **설정 후 바로 조회 가능 => 동기적으로 작동** => 이때문에 리렌더링 없이 바뀐 변수값을 바로 사용해야할 때 쓰인다.
+- 이 useRef를 이용해서 setTimeOut, setInterval을 통해서 만들어진 ID라거나, 외부 라이브러리를 사용하여 생성된 인스턴스라거나, scroll 위치 등을 관리할 수 있다.
+
+#### [3-3-2 왜 굳이 useRef으로 렌더링과 상관없는 변수를 만드는거임? let으로 하면 안됨?](https://velog.io/@pks787/useRef-vs-variable-useState-%EC%B0%A8%EC%9D%B4%EC%A0%90)
+
+컴포넌트 내부와 외부에서 일반 변수 선언을 지양해야 하는 이유가 크게 두 가지다.  
+
+1. 함수 컴포넌트 내부에서 일반 변수 => 일반 키워드로 변수를 선언하면 컴포넌트가 렌더링 될때마다 초기화되며 불필요한 동작을 야기시킨다.
+2. 함수 컴포넌트 외부의 일반 변수 => 여러 곳에서 사용되는 컴포넌트 인스턴스의 경우 해당 변수를 인스턴스 간에 공유하게 될 수 있다.
+
+- useRef훅은 크게 Accessing the dom node와 keeping a mutable variable 하는데 쓰인다. => 뭔가 컴포넌트 안에서 변수를 유지시키고 싶은데 렌더링이랑은 자유로운 변수를 만들고 싶어질때가 이따..
+- useRef는 일반적인 자바스크립트 객체라서 메모리 heap 영역에 저장된다 => 사실 이게 전 생애주기에서 계속 살아있는 이유다.
+- 그래서 어플리케이션이 종료되거나 가비지 컬렉팅이 될때까지 참조할때마다 같은 메모리 주소를 가지게 되고, 같은 메모리 주소를 가지기 때문에 ===가 항상 true고 값이 바뀌어도 리렌더링 되지 않음(변수 자체가)
+- 하지만 함수 컴넌 내부에 변수를 선언한다면, [렌더링 될때마다 값이 항상 초기화가 되고(undefined 할당) 새로운 변수가 만들어진다.](https://ui.dev/useref/) 매 렌더링때마다 유지가 안되는 것임.
+- 그리고 만약 어떤 변수를 컴포넌트 바깥에다 전역변수처럼 선언했는데 컴포넌트가 싱글톤이 아니고 여러번 쓰인다면, [일반 키워드로 컴포넌트 안에서 변수를 선언하면 모든 인스턴스가 변수를 공유하는 불상사가 발생한다.](https://markoskon.com/the-difference-between-refs-and-variables/)
+
+```jsx
+let counterOutside = 0;
+const Counter = () => {
+  const [counter, setCounter] = useState(0);
+  console.log(counterOutside);
+  return (
+    <p>
+      The counter is {counter}{" "}
+      <button
+        onClick={() => {
+          // 이걸로 컴포넌트 밖 변수에 접근해서 값을 바꿀 수도 있는데
+          // 이 부수효과는 모든 인스턴스에 전파된다.
+          setCounter(counter + 1);
+          counterOutside = counterOutside + 1;
+        }}
+      >
+        +
+      </button>
+    </p>
+  );
+};
+
+export default Counter;
+```
+
+- 사실 생각해보면 3-3 단락에 설명이 다 있다.
+- 여담으로는 클래스 컴포넌트에서는 인스턴스 변수를 사용하면 렌더링에서 자유로운 변수를 사용할 수 있었다.
