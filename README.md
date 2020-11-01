@@ -69,9 +69,9 @@
 
 - constructor : 함수형 컴포넌트니까 컨스트럭터가 필요없구 초기화도 필요없다,,, state가 필요하면 useState훅으로 사용할 수 있다. 
 - shouldComponentUpdate: memo 훅을 써서 특정 state를 업뎃하지 않고 기억해서 재사용해서 렌더링할 수 있다.
-- render : **함수형 컴포넌트가 리턴하는 값 그 자체**로 대체된다. 원래는 렌더 생명주기의 순수한 리턴값이 컴포넌트의 결과값이었는데.
-- componentDidMount, componentDidUpdate, componentWillUnmount : useEffect가 이 모두를 대체한다. 다시말하면 컴포넌트가 렌더링 시작해서 mount되는 상황, state가 업데이트 되는 상황, 컴포넌트가 소멸되는 상황 모두를 useEffect가지고 제어한다는 것이다.
-- getSnapshotBeforeUpdate, componentDidCatch, getDerivedStatesFromProps: 이 생명주기들에는 딱히 대응되는건 없다. 그치만 사실 이런 생명주기 없이도 잘 작동되는거 보면 훅을 사용하는 지금의 리액트가 **생명주기 패러다임과는 다른 관점을 견지한다는 것을 알 수 있을 것**
+- render : 원래는 렌더 생명주기의 순수한 리턴값이 컴포넌트의 결과값이었는데, **함수형 컴포넌트가 리턴하는 값 그 자체**로 대체된다. 
+- componentDidMount, componentDidUpdate, componentWillUnmount : useEffect가 이 모두를 대체한다. 다시말하면 컴포넌트가 렌더링 시작해서 mount되는 상황, state가 업데이트 되는 상황, 컴포넌트가 소멸되는 상황 모두를 useEffect가지고 제어한다는 것이다. => 정확히 말하면 이제 컴포넌트가 어쩌구 그런 상황은 없다 useEffect 부분 참조..
+- getSnapshotBeforeUpdate, componentDidCatch, getDerivedStatesFromProps: 이 생명주기들에는 딱히 대응되는건 없다. 그치만 사실 이런 생명주기 없이도 잘 작동되는거 보면 훅을 사용하는 지금의 리액트가 **생명주기 패러다임과는 다른 관점을 견지한다는 것을 알 수 있을 것.** 역시 useEffect 부분 참조
 
 ## 3. 훅들
 
@@ -210,7 +210,6 @@ const React = (function() {
 - setState는 프로미스를 반환하는 함수는 아니기 때문에 async await같은걸로 제어가 되는건 아니다. 정확히는 비동기로 작동하는건 아닌데, 비동기로 작동하는 것처럼 보이는 것이다.
 - 더 덧붙이자면 앞에서 계속 보았듯 클로저를 기반으로 함수가 상태 값을 사용하는데, 상태 업데이트는 기존 클로저가 아니라 새로운 클로저가 생성되는 다음 다시 렌더링에 반영된다. **즉 재랜더링이 되지 않는다면 클로저는 그대로고 결국 state도 그대로다**
 
-
 ### 3-2) useEffect
 
 부수효과와 관련된 로직을 **죄다** 해결하는 부수효과 마스터
@@ -258,6 +257,7 @@ function Component() {
 #### 3-2-2) [생명주기와는 완전 다른 useEffect 패러다임](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%ED%95%A8%EC%88%98%EB%A5%BC-%EC%9D%B4%ED%8E%99%ED%8A%B8-%EC%95%88%EC%9C%BC%EB%A1%9C-%EC%98%AE%EA%B8%B0%EA%B8%B0)
 
 **생명주기 사고방식으로 useEffect를 이해하려고 하지 마라**  
+
 > 제목에 링크단 글은 진짜 리액트 프로그래밍을 하는 사람이라면 진짜 n번쯤 읽고 [글쓴이 - Dan Abramov](https://overreacted.io/a-complete-guide-to-useeffect/)에게 [그랜절](https://namu.wiki/w/%EA%B7%B8%EB%9E%9C%EC%A0%88) 올려야할 글입니다,,,  
 
 - 함수형 컴넌에서 모든 렌더링은 고유의 상태값과 이팩트를 가진다. => 만약에 setTimeout같은걸로 변한 state를 몇 초 뒤에 alert한다고 할 때, 함수형 컴포넌트는 setTimeout이 호출될 때의 state를 기반으로 alert를 보낸다(값을 잡아둔다). 이것으로 각 state는 랜더링시마다 다른 상태값을 **상수처럼** 가지고 있다는 것을 알 수 있다. 특정 렌더링 시 그 내부에서 props와 state는 영원히 같은 상태로 유지된다..! => 컴포넌트 안에서 state나 props 값을 읽어들이는 시점이 별로 중요하지 않다.
@@ -300,20 +300,88 @@ function Counter() {
 ```
 
 - 이펙트는 매 랜더링 후 실행되며, 앞에서 말했듯 매 렌더링마다 별도로 존재한다 =>  개념적으로 컴포넌트 결과물의 일부로서 특정 랜더링 시점의 prop과 state를 '본다' => 매 랜더링마다 특정 렌더링 시점의 상태값을 반영한다 => 이게 useEffect가 최신의 상태를 읽어 들이는 원리다. 다른 막 작용이 있는게 아니라 그냥 볼뿐...
+- 그리고 이 개념은 나중에 useCallback등에서 설명하게 되겠지만 **useEffect 콜백도 최적화의 타겟이 되는 이유가 된다**
 - 개념적으로 이펙트는 랜더링 결과의 일부다. 렌더링 결과에 영향을 미치는 인자다. => 엄격하게 이야기하면 그렇지는 않다고
 - DOM 업데이트 이후에 useEffect가 실행되니 컴포넌트는 마운트와 업데이트의 구분이 없다. useEffect는 트리 바깥에 있는 것들을 props와 state에 따라 동기화할 수 있게 한다.
 - 만약 컴포넌트가 최초 렌더링할때와 그 후에 다르게 동작하는 이팩트를 작성하고 싶다면, 흐름을 거스르는 것이다!(모든 것은 목적에 달렸지 여정은 중요하지 않다)
 
-#### 3-2-3) 의존성 배열과 관련한 썰
+#### [3-2-3) 의존성 배열과 관련한 썰](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%EC%9D%98%EC%A1%B4%EC%84%B1%EC%9D%84-%EC%86%94%EC%A7%81%ED%95%98%EA%B2%8C-%EC%A0%81%EB%8A%94-%EB%91%90-%EA%B0%80%EC%A7%80-%EB%B0%A9%EB%B2%95)
 
-리액트에게 거짓말을 하지 마라 ㅎㅅㅎ
+리액트에게 거짓말을 하지 마라 ㅎㅅㅎ 혼나용!!!
 
 - 이펙트를 적용할 필요가 없다면 다시 실행하지 않는 것이 좋을 것이다. => 특정한 이펙트가 불필요하게 다시 실행되는 것을 방지하고 싶다면 의존성 배열을 useEffect의 인자로 전달할 수 있는 거시다
+- 의존성 배열은 리액트에게 어떤 랜더링 스코프에서 나온 값 중 이펙트에 쓰이는 것 **전부**를 알려주는 힌트라고 인식해야한다. 기본적으로 이펙트는 컴포넌트의 state나 props를 알 수가 없기 때문이다.
 - 의존성 배열의 요소들이 같다면 동기화할 것은 없으니 리액트는 이펙트를 스킵한다.
-- 의존성에 대해 리액트에게 거짓말을 한다면 좋지 않은 결과를 가져오게 된다. 그런 상황이 대표적으로는 빈 배열을 의존성 배열로 넘기는건데(초기에만 이팩트를 실행하고 싶어서)
-- 의존성 배열은 리액트에게 어떤 랜더링 스코프에서 나온 값 중 이펙트에 쓰이는 것 전부를 알려주는 힌트라고 인식해야한다. 
+- 의존성에 대해 리액트에게 거짓말을 한다면 좋지 않은 결과를 가져오게 된다. 그런 상황이 대표적으로는 빈 배열을 의존성 배열로 넘기는건데(초기에만 이팩트를 실행하고 싶어서) => 진짜 의존성이 없는 경우 아니면 안 하는게 좋은거같다
+- 이펙트를 한 번만 실행하고 싶어서 의존성 배열로 빈 배열을 넘겼는데 useEffect 내부의 setState 함수가 있다면 그것도 최초에만 실행될 것 => 버그가 터지기 쉬운 로직이 된다.
+- 명확한 로직을 위해서라도 이펙트에 의존성을 솔직하게 전부 명시하는 것이 중요하다. [eslint가 도와줄 것이다.](https://github.com/facebook/react/issues/14920)
+- 솔직한 의존성 배열을 작성하기 위해서는 **1) 컴포넌트에 있으면서 이펙트에 사용되는 모든 값이 의존성 배열 안에 포함되도록 고치고**, **2) 이펙트의 코드를 바꿔서 우리가 원하던 것보다 자주 바뀌는 값을 요구하지 않게 만든다(번역투가 이상한데 === 의존하지 않게끔 코드를 바꿀 수 있다면 바꿔준다)**
 
-#### 3-2-4) effect를 잘 사용하는 팁
+```jsx
+// count를 사용
+useEffect(() => {
+  const id = setInterval(() => {
+    setCount(count + 1);
+  }, 1000);
+  return () => clearInterval(id);
+}, [count]);
+
+// count를 사용하지 않음
+useEffect(() => {
+  const id = setInterval(() => {
+    setCount(c => c + 1);
+  }, 1000);
+  return () => clearInterval(id);
+  // effect에게 거짓말하지 않았다!
+}, []);
+```
+
+- 만약에 useEffect안에서 setInterval처럼 클린업이 필요한 부수효과를 사용하고, state에 의존성이 있는 경우 이펙트는 매 렌더링때마다 count를 참조해 기존 interval을 해제하고 새로운 interval을 등록할 것인데, 이런 동작은 크게 필요 없다.
+- 따라서 setState함수에 함수를 인자로 전달하여, 기존 count를 참조하여 값을 업데이트하게 만든다면, 의존성 배열의 count를 제거할 수 있다.
+- 수정된 이펙트가 최초 단 한번만 실행되었다 하더라도, 첫번째 렌더링에 포함되는 인터벌 콜백은 인터벌이 실행될때마다 setCount를 호출해 state를 업데이트 할 것이므로 정확하게 동작한다. 리액트가 state를 이미 알고 있기 때문에 컴포넌트 내부에서 현재의 count를 알 필요가 없는 것이다.
+
+#### [3-2-4 왜 useEffect는 이렇게 렌더링 이후 매번 실행되게끔 만들어진거임?](https://ko.reactjs.org/docs/hooks-effect.html#explanation-why-effects-run-on-each-update)
+
+- 요런 디자인은 버그가 적은 컴포넌트를 만드는데 도움이 된다.
+- 채팅앱 같은데에서 친구 한 명이 온라인인지 아닌지를 표시하는 컴포넌트의 예시를 생각해 본다면
+
+```jsx
+ componentDidMount() {
+    ChatAPI.subscribeToFriendStatus(
+      this.props.friend.id,
+      this.handleStatusChange
+    );
+  }
+
+  componentWillUnmount() {
+    ChatAPI.unsubscribeFromFriendStatus(
+      this.props.friend.id,
+      this.handleStatusChange
+    );
+  }
+```
+
+- 클래스 컴포넌트에서 클린업이 진행되는 로직을 생각해 보면, 대충 componentDidMount랑 componentWillUnmount 생명주기 메서드를 사용해서 해결할 것인데, 컴포넌트가 unmount가 되기 이전에 friend prop이 변한다면 컴포넌트는 다른 친구의 온라인상태를 또 하나 더 구독에 추가해서 표시하게 된다.(기존 구독이 해제되지 않고 구독만 더 들어난다.)
+- 마운트 해제가 일어날 동안에는 구독 해지 호출이 다른 친구 ID를 사용하기 때문에 막,, 특정 구독이 해제되지 않거나 하는 문제(메모리 누수)에서도 자유롭지 못하다. => componentDidUpdate를 사용해 friend prop이 바뀌는 순간에 구독을 해지하고 새 구독을 만드는 방법으로 해결할 수 있다. => 이미 번거롭다.....
+- 훅을 사용하면 update, mount 개념 없이 일관성있게 이팩트가 실행되기 때문에 버그가 없어진다. 그래서 클래스 컴넌에서는 흔히 업데이트 로직을 빼먹으면서 발생할 수 있는 버그가 예방된다.
+
+```jsx
+function FriendStatus(props) {
+  // ...
+  useEffect(() => {
+    // ...
+    ChatAPI.subscribeToFriendStatus(props.friend.id, handleStatusChange);
+    // 렌더링이 다시 된다면 매번 해제된다 => 굳이 중간 과정을 생각할 필요도 없다
+    return () => {
+      ChatAPI.unsubscribeFromFriendStatus(props.friend.id, handleStatusChange);
+    };
+  },[props.friend.id]);
+```
+
+#### [3-2-5) effect를 잘 사용하는 팁](https://ko.reactjs.org/docs/hooks-effect.html#tips-for-using-effects)
+
+- **관심사를 구분하려고 한다면 effect를 여러개 써라** : 훅이 탄생하게 된 동기가 된 문제 중 하나는 생명주기 class 메서드가 관련이 없는 로직들을 모아놓고, 관련 있는 로직들은 여러개의 메서드에 나누어놓는 정신없는 구조를 만들어내는 경우가 있다는 것. **여정이 아니라 결과와 의존성에 따라!**
+- **성능 최적화를 잘 해라** : 모든 렌더링 이후에 effect를 정리하거나 적용하는 것이 성능 저하를 발생시킬 수 있다. 의존성 배열과 return 값 클린업을 이용해서 effect가 필요한 때에만 호출될 수 있도록 유의하기.
 
 ### 3-3) useRef
 
