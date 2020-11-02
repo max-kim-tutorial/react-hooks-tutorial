@@ -565,7 +565,7 @@ function Counter({ step }) {
 - **업데이트 로직과 그로 인해 무엇이 일어나는지 서술하는 것이 분리될 수 있도록 만들어준다.** 근데 뭐 이건 상태관리 앱의 장점이기도 하니깐 뭐 새로운 사실은 아니고
 - 의존성 배열 안에는 dispatch가 들어간다고 쓸 수도 있고, 뺄 수도 있다 dispatch는 렌더링간 계속 동일하기 때문이다. + 이팩트의 불필요한 의존성을 제거한다(정확히 말하면 리듀서에 위임하는 느낌)
 
-#### 3-4-2 state의 주도권을 리듀서로 가져온다.
+#### 3-4-2 state 변경의 주도권을 리듀서로 가져온다.
 
 - 이게 뭐.. 주도권의 이전이 상태관리 앱의 컨셉이기도 하지만 컴포넌트 안에 리듀서를 다는 특이한 방법을 써서 상태관리를 하는 useReducer니깐 useState와 대응해서 설명하면 좋을 것 같다.
 - [리액트 공식문서](https://ko.reactjs.org/docs/hooks-reference.html#usereducer)에는 useReducer가 useState를 완벽히 대체할 수 있다고 설명하고 있다.
@@ -575,7 +575,7 @@ function Counter({ step }) {
 - 리듀서 안에서 선언한 state 변수는 dispatch와 함께 컴포넌트 밖에서도 꺼내쓸 수 있기 때문에 useEffect의 의존성 배열에도 넣을 수 있다.
 - Redux와 다른 점을 뽑자면, 리덕스는 드랍쉽 같아서 useSelector를 사용해서 어느 컴포넌트든 연결이 가능하지만 useReducer은 컴포넌트에 의존하고 있어서(컴포넌트 내부의 함수, 즉 함수의 함수) 어쩌면 스코프가 더 좁다. 
 - 애초에 useState를 대체하는 방식으로 useReducer을 고안한 것이니, 전역 상태관리가 안 되는게 정상이긴 하다. 
-- **튜토리얼 2)** 그럼 리듀서 함수를 따로 빼고 여러 컴포넌트에서 사용하는건 가능할까? 이때는 리듀서가 쌉 **순수해야** 가능하다. 참조하기가 넘 불편할듯? 오 근데 이러면 그냥 리덕스 아님?
+- **튜토리얼 2)** 그럼 리듀서 함수를 따로 빼고 여러 컴포넌트에서 사용하는건 가능할까? 이때는 리듀서가 쌉 **순수해야** 가능하다. 컴포넌트 내부의 변수는 payload로 주입해주지 않는 이상 못쓴다. 오 근데 이러면 그냥 리덕스 아님?
 - 비동기는 리덕스가 그렇듯 리듀서 안에서 하기는 힘들 것 같고 지저분한 로직이 되기 십상일 것 같다. useEffect에서 비동기 처리하고 payload로 리듀서에게 넘겨주는 방식이 좋을 것 같다.
 
 ```jsx
@@ -591,6 +591,150 @@ case 'DELETE_FILE':
 ### 3-5) useContext
 
 더 쉬운 상태관리를 위한 훅 2
+
+- context 객체를 받아 그 context의 현재값을 반환함.
+- context의 현재 값은 트리 안에서 이 Hook을 호출하는 컴포넌트에 가장 가까이에 있는 provider의 value prop에 의해 결정됨
+- 컴포넌트에 가장 가까운 provider가 갱신되면 이 Hook은 MyContext provider에 전달된 가장 최신의 context value를 사용하여 렌더러를 트리거한다.
+- 상위 컴포넌트에서 memo나 shouldComponentUpdate를 사용하고 있더라도 useContext를 사용하고 있는 컴포넌트 자체에서부터 다시 렌더링이 됨.
+- useContext로 전달한 인자는 context 객체 그 자체여야 함.
+
+```jsx
+const themes = {
+  light: {
+    foreground: "#000000",
+    background: "#eeeeee"
+  },
+  dark: {
+    foreground: "#ffffff",
+    background: "#222222"
+  }
+};
+
+// context를 만드는 API는 React에서 꺼내서 사용
+const ThemeContext = React.createContext(themes.light);
+
+function App() {
+  return (
+    // 프로바이더 사용하기
+    <ThemeContext.Provider value={themes.dark}>
+      <Toolbar />
+    </ThemeContext.Provider>
+  );
+}
+
+// 프로바이더의 타겟이 되는 컴포넌트
+function Toolbar(props) {
+  return (
+    <div>
+      <ThemedButton />
+    </div>
+  );
+}
+
+// 의 자식 컴포넌트
+function ThemedButton() {
+  // 받기!(context이름을 참조) => 요거 import해서 받아야되겠네?
+  const theme = useContext(ThemeContext);
+  return (
+    <button style={{ background: theme.background, color: theme.foreground }}>
+      I am styled by theme context!
+    </button>
+  );
+}
+```
+
+- **튜토리얼 3)** context 의존성은 약간 커스텀 훅처럼 사용하면 해결될 수 있을 것 같긴 하다. useReducer까지 써준다면 같은 파일에 선언하면 더 좋겠다.
+
+```jsx
+// src/context/todo.ts => 다른 디렉토리에 컨텍스트를 마련하기
+
+const todoContextValue = {
+  value: '뿡'
+}
+
+// provider의 value 인자로
+export const TodoContext = createContext(todoContextValue)
+
+// consumer의 context 참조용으로
+export const useTodoContext = () => useContext(TodoContext)
+```
+
+- 그냥 useContext만 사용할때 자식 컴넌에서 프로바이더의 상태를 바꿀 수 있는건가? context로 함수를 내려서 함수를 자식에서 실행하는 방법으로 얼추 되는듯. 
+- 근데 그렇게 일일히 넣어주기가 불편하고, 상태를 변경할 필요가 없는 중간 컴포넌트에까지 변경 함수를 전파하는게 약간 좀 오버킬인듯 보인다.
+- 그래서 dispatch로 손쉽게 state 변경이 가능한 useReducer랑 함께 쓰면 더 좋다. hook으로만 상태관리 할 때는 이 두 훅이 정말 뗄레야 뗄 수 없을 듯 싶다.
+
+#### 3-5-1) Context API 복습
+
+- 컴포넌트 트리 전체에 데이터를 제공하는 방법. **컴포넌트 트리 안에서** 전역적이라고 볼 수 있는 데이터를 공유할 수 있도록 고안된 방법이다.
+- context를 사용하면 중간에 있는 엘리먼트들에게 props를 넘겨주지 않아도 괜찮다.
+- context를 사용하면 컴포넌트를 재사용하기 어려워진다. context는 트리에 의존하기 때문에 context의 consumer인 컴포넌트를 트리 바깥에서 context의 의존성 free하게 사용할 수 없기 때문이다. => 개인적으로 이거 때문에 진짜 쓰기 싫었다
+- 컴포넌트 트리의 리프 컴포넌트들을 dumb 컴포넌트로 만든고, 개별 컴포넌트 트리 안에서 어떤 맥락의 context를 사용하는지 파악을 계속 해야 버그를 방지할 수 있을 것이다. 그리고 useContext 훅이 나오면서 조금은 괜찮아졌지만 타이핑도 꽤 번거롭다.. redux로 물량전을 할 수 있는데 굳이 context로 각개전투 하는 느낌이랄까
+- 그리고 그럴 일이 많지는 않지만 여러개의 provider가 있을 경우 모양이 좀...
+
+```jsx
+// 으으..
+ <TestContext.Provider value='hello'>
+    <TestContext2.Provider value='world!'>
+      <UseContextExample />
+    </TestContext2.Provider>
+  </TestContext.Provider>
+```
+
+- 그리고 대안도 많다. 컴포넌트 자체를 prop으로 넘겨주는 [컴포넌트 합성이라던지](https://ko.reactjs.org/docs/context.html#before-you-use-context)
+
+#### 3-5-1) useReducer와 합체
+
+리듀서에 날개를 달아줘요!
+
+- 두 훅을 같이 쓰면 꽤 재미있는 구조가 만들어진다. 하나의 컴포넌트 렌더 트리 최상위에 가까운 곳에서 Reducer을 선언하고 provider 만들어서 해당 컴포넌트 하위의 모든 컴포넌트들이 consumer로서 reducer을 공유하게끔 하는 것이다. 
+
+```jsx
+// 부모(provider)
+const MyContext = React.createContext();
+
+export default function App() {
+  const [state, dispatch] = useReducer(loginReducer, initialState);
+  const { todos, isLoggedIn } = state;
+  return (
+    // state와 dispatch를 같이 context로 넘긴다.
+    <MyContext.Provider value={{ state, dispatch }}>
+      <div className="App useContext">
+        <TodoPage todos={todos} dispatch={dispatch} isLoggedIn={isLoggedIn} />
+      </div>
+    </MyContext.Provider>
+  );
+}
+
+// 자식(consumer)
+function TodoItem({ title, completed }) {
+  const { state, dispatch } = useContext(MyContext);
+  const { isLoggedIn } = state;
+  return (
+    <div className="todoItem">
+      <p>{title}</p>
+      <div>
+        <input
+          type="checkbox"
+          checked={completed}
+          onClick={() => {
+            if (!isLoggedIn) {
+              alert('Please login to click this!');
+            }
+          }}
+          onChange={() => {
+            // 이런식으로 하위 컴넌에서 직접 디스패치를 부르는게 가능해진다.
+            if (isLoggedIn) {
+              dispatch({ type: 'toggleTodoCompleted', payload: title });
+            }
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+#### 3-5-3) useReducer + useContext 최적화 팁
 
 ### 3-6) useMemo
 
