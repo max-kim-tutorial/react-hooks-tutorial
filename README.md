@@ -2,12 +2,15 @@
 
 그동안 줍줍해왔던 React Hooks 레퍼런스 정리
 
-## 0) 튜토리얼에서 해볼 것
+## 0) 튜토리얼에서 해본 것
 
-- useEffect의 모든 기능 사용
-- 렌더링 최적화(useMemo, useCallback)
-- context API 쉽게 써보기(useContext)
-- custom hook 만들어다 써보기(I/O 처리)
+|주제|컴포넌트(들)|
+|-|-|
+|useEffect의 의존성 배열 이상한 점|UseEffectIrony.tsx|
+|리듀서 함수를 컴포넌트 외부에서 모듈로 가져다쓰는 useReducer 사용|GiveMeRedux.tsx|
+|렌더링 최적화(useMemo, useCallback)|-|
+|context API 쉽게 써보기(useContext)|-|
+|custom hook 만들어다 써보기(I/O 처리)|-|
 
 ## 1) 훅
 
@@ -530,14 +533,14 @@ function Counter() {
 - 음,,, 생각
 - 리듀서에서 현재 state와 동일한 값을 반환하는 경우 React는 자식을 리렌더링하거나 effect를 발생하지 않고 이것들을 회피한다.
 
-주도권을 어디에 가져오는가???
-
 #### [3-4-1) useReducer의 특히 멋진 점](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%EC%99%9C-usereducer%EA%B0%80-hooks%EC%9D%98-%EC%B9%98%ED%8A%B8-%EB%AA%A8%EB%93%9C%EC%9D%B8%EA%B0%80)
 
 ```jsx
 function Counter({ step }) {
   const [count, dispatch] = useReducer(reducer, 0);
 
+  // prop을 참조하고 있다
+  // 컴포넌트 내부에 있으니 여러 변수 두루두루 참조하기가 편하다
   function reducer(state, action) {
     if (action.type === 'tick') {
       return state + step;
@@ -559,9 +562,30 @@ function Counter({ step }) {
 
 - 만약에 props가 useEffect의 의존성 배열에 필요하다고 할 때, 이걸 useEffect를 속이지 않으면서 의존성 배열에서 제외시킬 수 없을까?
 - 리듀서 그 자체를 컴포넌트 안에 정의하여 props를 읽도록 하면 피할 수 있다(리듀서 안에서 props에 접근이 가능하다.)
-- 업데이트 로직과 그로 인해 무엇이 일어나는지 서술하는 것이 분리될 수 있도록 만들어준다. 근데 뭐 이건 상태관리 앱의 장점이기도 하니깐
+- **업데이트 로직과 그로 인해 무엇이 일어나는지 서술하는 것이 분리될 수 있도록 만들어준다.** 근데 뭐 이건 상태관리 앱의 장점이기도 하니깐 뭐 새로운 사실은 아니고
 - 의존성 배열 안에는 dispatch가 들어간다고 쓸 수도 있고, 뺄 수도 있다 dispatch는 렌더링간 계속 동일하기 때문이다. + 이팩트의 불필요한 의존성을 제거한다(정확히 말하면 리듀서에 위임하는 느낌)
 
+#### 3-4-2 state의 주도권을 리듀서로 가져온다.
+
+- 이게 뭐.. 주도권의 이전이 상태관리 앱의 컨셉이기도 하지만 컴포넌트 안에 리듀서를 다는 특이한 방법을 써서 상태관리를 하는 useReducer니깐 useState와 대응해서 설명하면 좋을 것 같다.
+- [리액트 공식문서](https://ko.reactjs.org/docs/hooks-reference.html#usereducer)에는 useReducer가 useState를 완벽히 대체할 수 있다고 설명하고 있다.
+- useState를 사용했을 때는 set으로 시작하는 함수가 state를 바꾸는 주체다. useReducer를 사용했을 때는 리듀서가 state를 바꿔준다.
+- useState : 이펙트나 이벤트 핸들러에서 set으로 state를 바꿈 => 재랜더링 => 의존성 배열에 맞는 이펙트 실행
+- useEffect : 이펙트나 이벤트 핸들러에서 dispatch를 통해 action을 호출하고 state를 바꿈 => 재랜더링 => 의존성 배열에 맞는 이펙트 실행
+- 리듀서 안에서 선언한 state 변수는 dispatch와 함께 컴포넌트 밖에서도 꺼내쓸 수 있기 때문에 useEffect의 의존성 배열에도 넣을 수 있다.
+- Redux와 다른 점을 뽑자면, 리덕스는 드랍쉽 같아서 useSelector를 사용해서 어느 컴포넌트든 연결이 가능하지만 useReducer은 컴포넌트에 의존하고 있어서(컴포넌트 내부의 함수, 즉 함수의 함수) 어쩌면 스코프가 더 좁다. 
+- 애초에 useState를 대체하는 방식으로 useReducer을 고안한 것이니, 전역 상태관리가 안 되는게 정상이긴 하다. 그럼 리듀서 함수를 따로 빼고 여러 컴포넌트에서 사용하는건 가능할까? 이때는 리듀서가 쌉 **순수해야** 가능하다. 참조하기가 넘 불편할듯? 오 근데 이러면 그냥 리덕스 아님?ㅋㅋㅋㅋㅋ
+- 비동기는 리덕스가 그렇듯 리듀서 안에서 하기는 힘들 것 같고 지저분한 로직이 되기 십상일 것 같다. useEffect에서 비동기 처리하고 payload로 리듀서에게 넘겨주는 방식이 좋을 것 같다.
+
+```jsx
+// 이렇게 디스패치를 발생시키면
+dispatch({ type: 'DELETE_FILE', file: state.deleteFile });
+
+// 액션 객체를 이렇게 참조할 수 있다.
+case 'DELETE_FILE':
+  const index = state.files.indexOf(action.file);
+  return {...state, files:[...]}
+```
 
 ### 3-5) useContext
 
