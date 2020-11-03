@@ -4,11 +4,11 @@
 
 ## 0) 튜토리얼에서 해본 것
 
-|번호|주제|컴포넌트(들)|
+|번호|주제|컴포넌트 진입점|
 |-|-|-|
 |1|useEffect의 의존성 배열 이상한 점|UseEffectIrony.tsx|
 |2|리듀서 함수를 컴포넌트 외부에서 모듈로 가져다 쓰는 useReducer 사용|GiveMeRedux.tsx|
-|3|useReducer + useContext + context와 reducer 모듈 선언|ContextParent.tsx|
+|3|useReducer + useContext + context와 reducer 모듈|ContextParent.tsx|
 |3|렌더링 최적화(useMemo, useCallback)|-|
 |4|context API 쉽게 써보기(useContext)|-|
 |5|custom hook 만들어다 써보기(I/O 처리)|-|
@@ -737,8 +737,44 @@ function TodoItem({ title, completed }) {
 
 #### 3-5-3) useReducer + useContext 최적화 팁
 
+- 최적화 공부한 뒤에 다시 돌아오겠따
+
 ### 3-6) useMemo
+
+```jsx
+// 이 값을 실질적으로 사용한다
+const count = useMemo(() => countActiveUsers(users), [users]);
+```
+
+- 메모이제이션된 **값**을 반환한다. => 첫번째 파라미터에는 어떻게 연산할지 정의하는 함수를 넣어주면 되고, 두번째는 의존성 배열을 넣어준다. 이 배열 안에 넣은 내용이 바뀌면 등록한 함수를 호출해서 값을 연산하고, 내용이 바뀌지 않았다면 이전 값 재사용
+- useMemo는 의존성 배열이 변경되었을 때만 메모이제이션된 값만 다시 계산한다. 모든 렌더링 시의 고비용 계산을 방지한다.
+- useMemo로 전달된 함수는 렌더링 중에 실행된다. 통상적으로 렌더링 중에는 하지 않는 것은 useMemo 콜백에서 안하는게 좋다. 사이드 이펙트같은거는 useEffect의 일이다.
+- 배열이 없는 경우 매 렌더링마다 새 값을 계산한다.
+- useMemo는 성능 최적화를 위해 사용할 수 있지만 **이를 보장하는 것은 아니다.** useMemo를 사용하지 않고도 동작할 수 있는 코드를 작성하고, useMemo를 추가하여 성능을 최적화해라
+- 기본적으로는 input시 재랜더링될때 useMemo를 사용하는 식으로 최적화를 하는 예제가 보편적이다.
+
+#### 3-6-1) 덤으로 얹는 올바른 사용법
+
+#### 3-6-2) useRef같은 다른 훅이랑 사용할 수 있는건가
 
 ### 3-7) useCallback
 
+```js
+const memoizedCallback = useCallback(
+  () => {
+    doSomething(a, b);
+  },
+  [a, b],
+);
+```
+
+- 메모이제이션된 **콜백**을 반환한다. 메모이제이션된 콜백
+- 콜백이, 컴포넌트 내의 함수가 렌더링 할 때마다 모두 달라지는데 그 동작을 방지한다. 의존성 배열의 값들이 달라지지 않았다면 이전의 그 함수를 그대로 이용한다.
+
+
+- **튜토리얼 4** : 그냥 잘 돌아가는 컴포넌트 useCallback과 useMemo로 최적화하기
+
 ### 3-8) 기타 내장 훅
+
+
+## 훅 만들기
