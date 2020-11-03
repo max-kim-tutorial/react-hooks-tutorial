@@ -1,10 +1,11 @@
 import React from 'react'
-import GiveMeReducer from "./components/GiveMeReducer"
+// import GiveMeReducer from "./components/GiveMeReducer"
+import ContextParent from './components/ContextParent'
 
 function App() {
   return (
     <div className="App">
-      <GiveMeReducer />
+      <ContextParent />
     </div>
   );
 }
