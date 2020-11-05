@@ -753,9 +753,6 @@ const count = useMemo(() => countActiveUsers(users), [users]);
 - useMemo는 성능 최적화를 위해 사용할 수 있지만 **이를 보장하는 것은 아니다.** useMemo를 사용하지 않고도 동작할 수 있는 코드를 작성하고, useMemo를 추가하여 성능을 최적화해라
 - 기본적으로는 input시 재랜더링될때 useMemo를 사용하는 식으로 최적화를 하는 예제가 보편적이다.
 
-#### 3-6-1) 실질적인 사용법
-
-#### 3-6-2) useRef같은 다른 훅이랑 사용할 수 있는건가
 
 ### 3-7) useCallback
 
@@ -774,7 +771,186 @@ const memoizedCallback = useCallback(
 
 - **튜토리얼 4** : 그냥 잘 돌아가는 컴포넌트 useCallback과 useMemo로 최적화하기
 
-#### 3-7-1) 이른 최적화는 뭐고 그래서 언제 써야 올바른가?
+**두 훅이 최적화라는 맥락도 비슷하고 같이 쓰이는 경우도 많아서 관련 내용은 한꺼번에 설명**
+
+#### 3-7-1) [실질적인 사용예시](https://medium.com/vingle-tech-blog/react-%EB%A0%8C%EB%8D%94%EB%A7%81-%EC%9D%B4%ED%95%B4%ED%95%98%EA%B8%B0-f255d6569849)
+
+##### React.memo
+
+```jsx
+// 컴포넌트를 감싸고있다
+const HookPureComponent = React.memo((props) => {
+  return <div>{props.message}</div>
+})
+
+// 두번째 인자로 조건을 넘긴다
+const HookedPureComponent = React.memo((props) => {
+  return <div>{props.message}</div>
+}, (currProps, nextProps) => {
+  return currProps.message !== nextProps.message;
+});
+
+// 실질적으로 사용하는게 약간 이정도?
+// 컴포넌트 익스포트할때 이런식으로(HOC) 래핑
+export React.memo(
+  someComponent,
+  (curr,next) => curr.message !== next.message
+)
+```
+
+- 함수형 컴포넌트의 렌더링을 제어
+- 단순히 컴포넌트를 래핑하면 흔히 말하는 pureComponent가 되고
+- 두번째 인자로 현재 props와 미래 props를 비교하여 shouldComponentUpdate 처럼 렌더링을 직접 제어할 수 있음.
+- 흔히 클래스형에서 `extend React.pureComponent` 이런식으로 만들었던 순수 컴포넌트의 함수 버전
+
+#### useMemo, useCallback
+
+```jsx
+function someComponent() {
+  const [file, setFile] = useState(null);
+  // 일단 메소드라고 생각하면 좋을거같다
+  // 함수 안의 함수들도 매 랜더링마다 새로운 함수를 만든다!!
+  const handleUpload = useCallback(uploadFile => {
+    setFile(uploadFile)
+  }, []);
+  return (
+    <FileUploadInput
+      deny={FILE_UPLOAD_DENY_TYPES}
+      onUpload={handleUpload}
+    >
+      {React.useMemo(() => {
+        return (
+          <strong>
+            {file ? "업로드되어 있음" : "업로드하기"}
+          </strong>
+        )
+      }), [Boolean(file)]}
+    </FileUploadInput>
+  )
+}
+
+// 오 이런 방법도 괜찮은거 같다. prop이랑 elem을 묶어주는 방식
+// 의존성 배열이 빈값이면 아무리 렌더링되는 값이 바뀔지라도 절대 변하지 않은 elem
+function hookedSomeComponent () {
+  const somethingToRender = useMemo(
+    () => <div>{props.message}</div>,
+    [props.message]
+  )
+  return <>{render}</>
+}
+```
+
+- 훅이 자체적으로 memoization을 지원하는 방법
+- useCallback은 useMemo의 핸들러 버전으로 값이 아닌 메모이제이션되는 함수를 가져온다. 
+- 메모이제이션의 값이 변경되는 시점은 함수인자가 아닌(lodash에 메모이제이션 뭔가가 있나봄) 의존성을 배열 형태로 받아서 판단.
+
+#### 3-7-2) [이른 최적화는 뭐고 그래서 최적화는 언제 써야 올바른가?](https://rinae.dev/posts/review-when-to-usememo-and-usecallback)
+
+- 작성하고 있는 컴포넌트에 맞게 쓰는게 중요하다. 로직이 별로 없고 단순히 출력 위주의 컴넌이라면 **이른 최적화**가 될 가능성이 높다.
+- 지속적인 업데이트가 된다던지, 하위에 컴포넌트가 많다던지 하는 경우에 도입하는게 좋은 거 같음
+- 불변성이 보장되지 않는 값들이나 reactElement를 받아와서 렌더링된다면 최적화가 의미없는 결과가 될 수도 있다. 어차피 매 랜더링마다 출력되는 것인데 쓸데없이 비교만 하게됨
+- 퍼포먼스 개선이 없는 부분에서 무분별하게 useCallback을 쓰면 오히려 의존성 배열을 선언해줘서 리소스가 더 많이 드는 꼴이니(+메모리까지) 오히려 악영향을 미친다.
+- 어떤 상황에서는 useCallback으로 감싸준다 한들 최적화를 적용할 수 없는 경우도 왕왕 생기는데, 이벤트 핸들러에 `() => someActionTriggeredByEvent()` 이런식으로 핸들러를 달아주면 매 랜더링때마다 새로운 함수가 prop으로 전달되서 다시 재랜더링이 일어난다.
+- `useCallback(fn,deps)`는 그리고 useMemo(() => fn, deps)와 같다. useMemo는 (함수를 포함해서)어떤 값이나 메모이제이션을 적용할 수 있다는 특징이 있다.
+- useMemo의 경우는 실제로 값이 한번 선언되고 바뀌지 않을 것이라 한다면, 함수 스코프 안에 선언할 필요가 없다. 
+- 코드 최적화 한다고 들이는 공에 비해 얻을 수 있는 이득이 확실히 있을때!!!!! 최적화를 시도해보는게 좋다. 그런 고민할 시간에 제품 자체를 더 좋게 만드는게 이득이다.
+- 퍼포먼스 최적화는 절대 공짜가 아니다. 컴퓨팅 자원이나, 개발자의 자원 등 반드시 어디선가 소모되는 자원이 있으며 언제나 들인 자원에 비해 이득이 되지 않는다.
+
+##### 그러면 언제써야댐???
+
+1. 레퍼런스(메모리 값)이 동일한지 비교할 때 : 해당 elem에 바인딩된 상태와는 상관 없이 다른 elem이 렌더링이 될 때
+2. 컴퓨터를 활용하는 비싼 연산 : 데이터 시각화 등 prop이 삽시간에 바뀌는 상황일때.. 근데 자주 만나긴 힘들다.
+
+- 결론 : 최적화보다 발적화를 안하는게 중요하다
+- 이 코드가 부하가 많아서 최적화가 필요하다고 이야기할 수 있을 만한 명확한 검증을 거쳐라. 퍼포먼스 측정 같은거 해봐라.
+
+#### 3-7-3) useEffect에서의 useCallback
+
+```jsx
+function SearchResults() {
+  const [data, setData] = useState({ hits: [] });
+  async function fetchData() {
+    const result = await axios(
+      'https://hn.algolia.com/api/v1/search?query=react',
+    );
+    setData(result.data);
+  }
+  useEffect(() => {
+    fetchData();
+  }, []); // 이거 괜찮은가? 뻥치는 것은 아닐까...?
+```
+
+- 이펙트 바깥에서 선언된 함수가 엄청---나게 길어지거나, 함수가 바뀌어서 그 안에 state나 props를 의존성으로 갖게 된다면, deps를 계속해서 업데이트해야 하고 까먹을 가능성도 있다. 좋지 않은 방식
+- 그래서 어떠한 함수를 이펙트 안에서만 쓴다면, 그 함수를 직접 이펙트 안으로 옮기는 방식은 의존성 배열을 복잡하지 않게 유지할 수 있는 방법이다.
+
+```jsx
+  const [query, setQuery] = useState('react');
+
+  useEffect(() => {
+    // 아까의 함수들을 안으로 옮겼어요!
+    function getFetchUrl() {
+      return 'https://hn.algolia.com/api/v1/search?query=react' + query;
+    }
+    async function fetchData() {
+      const result = await axios(getFetchUrl());
+      setData(result.data);
+    }
+    fetchData();
+  }, [query]); // ✅ Deps는 OK
+```
+
+- 그런데 이펙트 안에 함수를 옮기고 싶지 않을때가 있을 수도 있는데, 한 컴포넌트에서 여러개의 이펙트가 있을때 같은 함수를 호출할 때 로직을 복붙하고 싶지는 않을 것이다.
+
+```jsx
+function getFetchUrl(query) {
+  return 'https://hn.algolia.com/api/v1/search?query=' + query;
+}
+
+useEffect(() => {
+    const url = getFetchUrl('react');
+    // ... 데이터를 불러와서 무언가를 한다 ...
+    // 함수는 매 렌더링마다 바뀐다 => 고로 그냥 계속 바뀌는거다
+    // 의존성 배열이 쓸데가 없다
+  }, [getFetchUrl]); // 🚧 Deps는 맞지만 너무 자주 바뀐다
+```
+
+- 해결책이라고 할 수 있는건 먼저, 함수가 순수함수라면 아예 컴포넌트 밖으로 빼서 이펙트 안에서 자유롭게 사용하라는 것 => 데이터 흐름에 영향을 받지 않으니까
+- 또는 useCallback으로 감싸서 함수의 항등성을 유지하게 한다
+
+```jsx
+const getFetchUrl = useCallback(() => {
+    return 'https://hn.algolia.com/api/v1/search?query=' + query;
+  }, [query]);  // 쿼리가 바뀔 때마다 새로운 함수
+
+  useEffect(() => {
+    const url = getFetchUrl();
+    // ... 데이터를 불러와서 무언가를 한다 ...
+  }, [getFetchUrl]); // 함수가 바뀌었으니 effect도 실행
+```
+
+```jsx
+function Parent() {
+  const [query, setQuery] = useState('react');
+  // ✅ query가 바뀔 때까지 항등성을 유지한다
+  const fetchData = useCallback(() => {
+    const url = 'https://hn.algolia.com/api/v1/search?query=' + query;
+    // ... 데이터를 불러와서 리턴한다 ...
+  }, [query]);  // ✅ 콜백 deps는 OK
+  return <Child fetchData={fetchData} />
+}
+function Child({ fetchData }) {
+  let [data, setData] = useState(null);
+  useEffect(() => {
+    fetchData().then(setData);
+  }, [fetchData]); // ✅ 이펙트 deps는 OK
+  // ...
+}
+```
+
+- 콜백을 일차적으로 state나 prop이랑 의존성 배열로 연동한 다음, useEffect단에서 함수의 변화에 또한 동기화 시키는 방식.
+- 추가설명) 클래스 컴포넌트에서 함수 prop은 데이터 흐름에서 차지하는 부분이 없다. 메소드는 가변성이 있는 this 변수에 묶이므로 다른데서 쓰거나 할때는 일관성을 담보할 수 없다. 
+- 다만 **useCallback을 사용하면 함수는 명백하게 데이터 흐름에 포함하여 쓸 수 있다.** 함수의 입력값이 바뀌면 함수 자체가 바뀌고, 만약 그렇지 않다면 같은 함수로 남아있다고 말할 수 있기 때문이다. 
+- useCallback은 함수 prop이 자식 컴넌의 useEffect에서 호출될 때 이를 다루는데 유용한 솔루션이다. 물론 맨날 쓰는건 좀 그렇고,,, [사실 콜백 자체를 내려보내는 걸 방지하는게 더 낫다.](https://reactjs.org/docs/hooks-faq.html#how-to-avoid-passing-callbacks-down)
 
 ### 3-8) 기타 내장 훅
 
