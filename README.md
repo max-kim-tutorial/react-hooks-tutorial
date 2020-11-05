@@ -753,7 +753,7 @@ const count = useMemo(() => countActiveUsers(users), [users]);
 - useMemo는 성능 최적화를 위해 사용할 수 있지만 **이를 보장하는 것은 아니다.** useMemo를 사용하지 않고도 동작할 수 있는 코드를 작성하고, useMemo를 추가하여 성능을 최적화해라
 - 기본적으로는 input시 재랜더링될때 useMemo를 사용하는 식으로 최적화를 하는 예제가 보편적이다.
 
-#### 3-6-1) 덤으로 얹는 올바른 사용법
+#### 3-6-1) 실질적인 사용법
 
 #### 3-6-2) useRef같은 다른 훅이랑 사용할 수 있는건가
 
@@ -773,6 +773,8 @@ const memoizedCallback = useCallback(
 
 
 - **튜토리얼 4** : 그냥 잘 돌아가는 컴포넌트 useCallback과 useMemo로 최적화하기
+
+#### 3-7-1) 이른 최적화는 뭐고 그래서 언제 써야 올바른가?
 
 ### 3-8) 기타 내장 훅
 
