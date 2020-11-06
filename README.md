@@ -9,8 +9,7 @@
 |1|useEffect의 의존성 배열 이상한 점|UseEffectIrony.tsx|
 |2|리듀서 함수를 컴포넌트 외부에서 모듈로 가져다 쓰는 useReducer 사용|GiveMeRedux.tsx|
 |3|useReducer + useContext + context와 reducer 모듈|ContextParent.tsx|
-|3|렌더링 최적화(useMemo, useCallback)|-|
-|4|context API 쉽게 써보기(useContext)|-|
+|4|렌더링 최적화(useMemo, useCallback)|InputRenderingOpt.tsx|
 |5|custom hook 만들어다 써보기(I/O 처리)|-|
 
 ## 1) 훅
