@@ -10,7 +10,7 @@
 |2|리듀서 함수를 컴포넌트 외부에서 모듈로 가져다 쓰는 useReducer 사용|GiveMeRedux.tsx|
 |3|useReducer + useContext + context와 reducer 모듈|ContextParent.tsx|
 |4|렌더링 최적화(useMemo, useCallback)|InputRenderingOpt.tsx|
-|5|custom hook 만들어다 써보기(I/O 처리)|-|
+|5|custom hook 만들어다 써보기(I/O 처리)|UseInputHooksComp.tsx|
 
 ## 1) 훅
 
@@ -952,7 +952,73 @@ function Child({ fetchData }) {
 - 다만 **useCallback을 사용하면 함수는 *명백*하게 데이터 흐름에 포함하여 쓸 수 있다.** 함수의 입력값이 바뀌면 함수 자체가 바뀌고, 만약 그렇지 않다면 같은 함수로 남아있다고 말할 수 있기 때문이다. 
 - useCallback은 함수 prop이 자식 컴넌의 useEffect에서 호출될 때 이를 다루는데 유용한 솔루션이다. 물론 맨날 쓰는건 좀 그렇고,,, [사실 콜백 자체를 내려보내는 걸 방지하는게 더 낫다.](https://reactjs.org/docs/hooks-faq.html#how-to-avoid-passing-callbacks-down) => plumbing처럼 매 컴넌마다 콜백을 넘기는게 번거롭고, useReducer로 상태와 관련된 액션을 dispatch를 prop으로 넘겨서 사용하는 것을 권장한다(no need to keep forwarding callbacks). 혹은 context를 사용하거나. 그리고 위에서 말했듯 dispatch는 매 랜더링 상황에서 모두 불변한 함수이므로, 의존성 배열에 포함될 필요가 없고 의존성을 신경 쓸 필요가 없어서 유용하다.
 
-### 3-8) 기타 내장 훅
+## 4) 훅 만들기
 
+- 커스텀 훅을 만들면 컴포넌트 로직을 함수로 뽑아내어 재사용할 수 있다.
+- 이름이 use로 시작하는 자바스크립트 함수이다.
+- 그렇게 크게 별거는 없고 공통의 코드를 뽑아내서 새로운 함수로 만드는 것 정도다. 사용자 정의 hook은 리액트의 특별한 기능이라기보다 기본적으로 hook의 디자인을 따르는 관습임.
+- 같은 hook을 사용하면 두개의 컴포넌트는 state을 공유하지 않는다. state와 effect는 독립적으로 작동한다. 각각의 hook에 대한 호출은 서로 독립된 state를 받게 된다. 하나의 컴넌에서 useState와 useEffect를 여러번 쓰는게 가능한데, 이들은 모두 독립적인걸 보면 여기도 독립적이다.
 
-## 훅 만들기
+### [4-1) 리액트 공식문서의 커스텀 훅 팁](https://ko.reactjs.org/docs/hooks-custom.html#useyourimagination)
+
+**useYourImagination()**
+
+- 사용자 훅은 이전 리액트 컴넌에서는 불가능했던 로직 공유의 유연성을 제공한다. 사용자 정의 hook을 만들어 폼 다루고, 애니메이션, 선언형 구독, 타이머, 그 외에 생각하지 않은 부분까지 훨씬 다양한 쓰임새에 적용이 가능하다.
+- 너무 이른 단계에서 로직을 커스텀 훅으로 뽑아내려고 하지 않는게 중요하다. 함수 컴포넌트가 할 수 있는 일이 더 다양해졌기 때문에 컴포넌트는 길어질 수 밖에 없고, 지금 바로 훅을 분리할 필요는 없다. 
+- 사용자 정의 훅이 복잡한 로직을 단순한 인터페이스 속에 숨길 수 있도록 하거나 복잡하게 뒤엉킨 컴포넌트를 풀어내도록 돕는 경우들을 찾아내는 것을 권장한다.
+
+### [4-2) 언제 써야 하나](https://medium.com/finda-tech/%ED%95%80%EB%8B%A4%EC%97%90%EC%84%9C-%EC%93%B0%EB%8A%94-react-custom-hooks-1a732ce949a5)
+
+#### 4-2-1) 훅의 장점
+
+- 클래스 컴포넌트보다 적은 양의 코드로 동일한 로직을 구현할 수 있다.
+- 코드 양이 적지만 명료함을 잃지 않는다.
+- **상태관리 로직의 재활용이 가능하다**
+
+#### [4-2-2) custom hook을 만드는데 필요한 몇가지 규칙](https://overreacted.io/ko/why-isnt-x-a-hook/)
+
+##### React API들이 공통적으로 지켜야할 특징
+
+- **합성(독립성)** : 커스텀 훅이 충돌을 일으켜서는 안된다. 어떠한 훅 하나가 다른 훅에 영향을 미쳐서는 안 된다. 순수하게 재사용이 될 수 있는 로직들을 찾는것도 중요해보인다.
+- **디버깅** : 프로젝트가 커지더라도 버그는 쉽게 찾을 수 있어야 한다. 리액트의 가장 큰 장점 중에 하나는 렌더링에 오류가 있을 때에도 트리를 타고 가다보면 어떤 컴포넌트가 잘못되었는지 찾을 수 있다는 점이다. 이 부분이 만약 불가능하고, 어떤 훅이나 컴포넌트 안에서 문제가 되는 훅의 사용례를 모두 살펴봐야 한다면 디버깅이 곤란한 것이다.
+- *핀다 글에서 추가)* **경쟁상태 유발 => 합성이 힘들다** : 다른 컴포넌트나 훅에서 공통적으로 접근할 수 있는 값을 다루고 있다면(DOM이라던가) 훅으로 만들기 적합하지 않다. 다른 훅이나 컴포넌트에 영향을 미칠 수 있기 때문이다. Dan Abramov의 글에서는 훅에 적합하지 않는 예로 react.memo를 언급하는데, 리랜더링 여부 또한 여러 훅들간에 공통적으로 사용될 수 있는 값, 어떤 결정이기 때문에 어떤 것을 적용해야하는지에 대한 질문이 남아 경쟁상태를 유발한다.
+
+##### 훅인거, 훅 아닌거 살펴보기
+
+- useState : 이 훅을 통해 새로운 state를 선언하는 것은 언제나 안전한데, 새로운 state를 선언할 때 같은 컴포넌트 내에서 어떤 hooks가 쓰였는지 전혀 살펴볼 필요가 없다. 그리고 다른 훅의 state가 바뀌었을 때도 다른 state들은 영향을 받지 않는다. 그리고 콘솔로그를 남기는 부분을 살펴보거나 할 수 있어서 내부의 값이 어떤 상태인지 보는 것 만으로 어떤 hooks가 잘못되었는지 알아낼 수 있다. 모든것의 내부를 들여다볼 필요가 없다.
+- React.memo : 결국 이 커스텀훅을 넣지 않고는 새로운 커스텀 훅을 만들지 못하는 상황이 일어난다. 합성에 적절한 훅이 아니다. 그리고 모든 커스텀 훅을 일일히 살펴보지 않는 한 디버깅이 어려운 상황에 놓인다. 
+
+```jsx
+import { useEffect } from 'react';
+
+const defaultOverflow: string = 'auto';
+
+function useDocumentOverflow(property: 'hidden' | 'scroll' | 'auto') {
+  useEffect(() => {
+    const bodyElement: HTMLBodyElement = document.getElementsByTagName('body')[0];
+    const previousOverflow: string = bodyElement.style.overflow || defaultOverflow;
+    bodyElement.style.overflow = property;
+ 
+    return (() => {
+      bodyElement.style.overflow = previousOverflow;
+    })
+  }, [property]);
+}
+
+// usage
+function SomeComponent() {
+  useDocumentOverflow('hidden');
+  
+  // ...
+}
+```
+
+- useDocumentOverflow : 핀다 글에서 든 예시인데, 전체화면을 덮는 모달이 활성화되있는 동안에 기존 화면이 스크롤되는 것을 막기 위해서 body의 overflow 값을 변경하는 훅이다. 
+  - 합성 : 이 훅을 동시에 여러 컴포넌트에서 사용하는데 들어가는 파라미터가 다르다면 어떻게 동작해야 하는 걸까? 우선권 로직 같은걸 정해도 이미 애매함과 문제는 존재한다.
+  - 디버깅 : 컴포넌트에서만 부르면 ㄱㅊ을 수 있는데, 만약에 다른 커스텀 훅 안에서 부른다면 현재 적용된 overflow값이 어느 곳에서 적용된 것인지 찾기는 쉽지 않을 수 있다(컴포넌트에서 그런 것인지? 다른 커스텀 훅에서 그런 것인지?)
+- 애초에 모든 로직을 훅으로 만들 필요는 없다. 컴포넌트에서 사용하는 모든 중복 로직을 hook으로 만들고자 하는 마음이 들 수도 있지만, 장단을 고민해보는 단계가 필요하다.
+- 튜토리얼 6) 핀다에서쓰는 useInput 훅 따라쳐보기
+
+## 5) 마치며
+
+- 대서사시가 끝났다,,,, 훅 레퍼런스 줍줍만 해오다가 한곳에 정리하니까 뿌듯하다..
