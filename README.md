@@ -864,7 +864,7 @@ function hookedSomeComponent () {
 - 결론 : 최적화보다 발적화를 안하는게 중요하다
 - 이 코드가 부하가 많아서 최적화가 필요하다고 이야기할 수 있을 만한 명확한 검증을 거쳐라. 퍼포먼스 측정 같은거 해봐라.
 
-#### 3-7-3) useEffect에서의 useCallback
+#### [3-7-3) useEffect에서의 useCallback - 함수를 데이터 흐름에 포함시키기](https://rinae.dev/posts/a-complete-guide-to-useeffect-ko#%ED%95%98%EC%A7%80%EB%A7%8C-%EC%A0%80%EB%8A%94-%EC%9D%B4-%ED%95%A8%EC%88%98%EB%A5%BC-%EC%9D%B4%ED%8E%99%ED%8A%B8-%EC%95%88%EC%97%90-%EB%84%A3%EC%9D%84-%EC%88%98-%EC%97%86%EC%96%B4%EC%9A%94)
 
 ```jsx
 function SearchResults() {
@@ -877,7 +877,8 @@ function SearchResults() {
   }
   useEffect(() => {
     fetchData();
-  }, []); // 이거 괜찮은가? 뻥치는 것은 아닐까...?
+  }, []); // 이거 괜찮은가?
+  // 함수를 보고있다 한들 매 렌더링마다 함수는 새 함수로 선언되고 바뀌니 의미도 없다
 ```
 
 - 이펙트 바깥에서 선언된 함수가 엄청---나게 길어지거나, 함수가 바뀌어서 그 안에 state나 props를 의존성으로 갖게 된다면, deps를 계속해서 업데이트해야 하고 까먹을 가능성도 있다. 좋지 않은 방식
@@ -915,7 +916,7 @@ useEffect(() => {
 ```
 
 - 해결책이라고 할 수 있는건 먼저, 함수가 순수함수라면 아예 컴포넌트 밖으로 빼서 이펙트 안에서 자유롭게 사용하라는 것 => 데이터 흐름에 영향을 받지 않으니까
-- 또는 useCallback으로 감싸서 함수의 항등성을 유지하게 한다
+- 또는 useCallback으로 감싸서 함수의 항등성을 유지하게 한다 => 이렇게 쓰는 useCallback의 목적은 최적화라기보다, state 바인딩 시킨 함수를 의존성 배열에서 관찰하기 용이하게 하기 위해서이다. **함수를 데이터 흐름, 이펙트가 관찰하는 의존성에 포함시키려는 솔루션이다**
 
 ```jsx
 const getFetchUrl = useCallback(() => {
@@ -949,8 +950,8 @@ function Child({ fetchData }) {
 
 - 콜백을 일차적으로 state나 prop이랑 의존성 배열로 연동한 다음, useEffect단에서 함수의 변화에 또한 동기화 시키는 방식.
 - 추가설명) 클래스 컴포넌트에서 함수 prop은 데이터 흐름에서 차지하는 부분이 없다. 메소드는 가변성이 있는 this 변수에 묶이므로 다른데서 쓰거나 할때는 일관성을 담보할 수 없다. 
-- 다만 **useCallback을 사용하면 함수는 명백하게 데이터 흐름에 포함하여 쓸 수 있다.** 함수의 입력값이 바뀌면 함수 자체가 바뀌고, 만약 그렇지 않다면 같은 함수로 남아있다고 말할 수 있기 때문이다. 
-- useCallback은 함수 prop이 자식 컴넌의 useEffect에서 호출될 때 이를 다루는데 유용한 솔루션이다. 물론 맨날 쓰는건 좀 그렇고,,, [사실 콜백 자체를 내려보내는 걸 방지하는게 더 낫다.](https://reactjs.org/docs/hooks-faq.html#how-to-avoid-passing-callbacks-down)
+- 다만 **useCallback을 사용하면 함수는 *명백*하게 데이터 흐름에 포함하여 쓸 수 있다.** 함수의 입력값이 바뀌면 함수 자체가 바뀌고, 만약 그렇지 않다면 같은 함수로 남아있다고 말할 수 있기 때문이다. 
+- useCallback은 함수 prop이 자식 컴넌의 useEffect에서 호출될 때 이를 다루는데 유용한 솔루션이다. 물론 맨날 쓰는건 좀 그렇고,,, [사실 콜백 자체를 내려보내는 걸 방지하는게 더 낫다.](https://reactjs.org/docs/hooks-faq.html#how-to-avoid-passing-callbacks-down) => plumbing처럼 매 컴넌마다 콜백을 넘기는게 번거롭고, useReducer로 상태와 관련된 액션을 dispatch를 prop으로 넘겨서 사용하는 것을 권장한다(no need to keep forwarding callbacks). 혹은 context를 사용하거나. 그리고 위에서 말했듯 dispatch는 매 랜더링 상황에서 모두 불변한 함수이므로, 의존성 배열에 포함될 필요가 없고 의존성을 신경 쓸 필요가 없어서 유용하다.
 
 ### 3-8) 기타 내장 훅
 
